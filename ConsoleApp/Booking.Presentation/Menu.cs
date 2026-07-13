@@ -44,6 +44,8 @@ namespace Booking.Presentation
                 Console.WriteLine("4. Save file");
                 Console.WriteLine("5. Update host information");
                 Console.WriteLine("6. Remove host");
+                Console.WriteLine("7. Simulate Race Condition");
+                Console.WriteLine("8. Update price by 2 hosts safely ");
                 Console.WriteLine("0. Exit");
                 Console.Write("\nYour choice: ");
 
@@ -69,6 +71,12 @@ namespace Booking.Presentation
                         break;
                     case "6":
                         DeleteHostUI();
+                        break;
+                    case "7":
+                        SimulateRaceConditionUI();
+                        break;
+                    case "8":
+                        UpdatePriceByTwoHostsUI();
                         break;
                     case "0":
                         exit = true;
@@ -114,11 +122,17 @@ namespace Booking.Presentation
             Console.Clear();
             Console.WriteLine("Adding apartment(s)");
             
-            int hostId = ReadInt("Enter host ID: ");
-
+            List<int> hostIds = [];
+            while (true)
+            {
+                int hostId = ReadInt("Enter the host ID (or 0 to exit): ");
+                if (hostId == 0) break;
+                hostIds.Add(hostId);
+            }
+            
             var request = new AddApartmentDto
             {
-                HostId = hostId,
+                HostIds = hostIds,
                 Address = new Address() 
             };
 
@@ -243,6 +257,95 @@ namespace Booking.Presentation
             
             var result = _hostService.DeleteHost(id); 
             PrintResult(result.IsSuccess, result.Message);
+        }
+
+        private void SimulateRaceConditionUI()
+        {
+            Console.Clear();
+            Console.WriteLine("Simulating race condition || Updating price in concurrent threads");
+            ShowHostsUI();
+            
+            int hostId = ReadInt("Enter host ID: ");
+            var host = _hostService.GetHostById(hostId);
+            
+            if (host == null)
+            {
+                Console.WriteLine("Host not found.");
+                Console.ReadKey();
+                return;
+            }
+            
+            int apartmentId = ReadInt("Enter Apartment ID: ");
+            var apartment = host.Apartments.FirstOrDefault(a => a.Id == apartmentId);
+            
+            if (apartment == null)
+            {
+                Console.WriteLine("Apartment not found.");
+                Console.ReadKey();
+                return;
+            }
+            
+            Console.WriteLine($"\nInitial Price: {apartment.PricePerNight}");
+            Console.WriteLine($"Expected Price: {apartment.PricePerNight + 20} (if it worked correctly)");
+            Console.WriteLine("Starting 2 parallel threads to increase price by 10 each...");
+            Console.WriteLine("Please wait 3 seconds...\n");
+            
+            Task[] tasks = new Task[2];
+            for (int i = 0; i < tasks.Length; i++)
+            {
+                tasks[i] = Task.Run(() => apartment.IncreasePriceWithRaceCondition(10));
+            }
+            
+            Task.WaitAll(tasks);
+            
+            Console.WriteLine($"Actual Final Price: {apartment.PricePerNight}  <-- ERROR! RACE CONDITION!");
+
+            Console.WriteLine("\nPress any key to continue...");
+            Console.ReadKey();
+        }
+
+        private void UpdatePriceByTwoHostsUI()
+        {
+            Console.Clear();
+            Console.WriteLine("Updating price in 2 concurrent threads safely");
+            ShowHostsUI();
+            
+            int hostId = ReadInt("Enter host ID: ");
+            var host = _hostService.GetHostById(hostId);
+            
+            if (host == null)
+            {
+                Console.WriteLine("Host not found.");
+                Console.ReadKey();
+                return;
+            }
+            
+            int apartmentId = ReadInt("Enter Apartment ID: ");
+            var apartment = host.Apartments.FirstOrDefault(a => a.Id == apartmentId);
+            
+            if (apartment == null)
+            {
+                Console.WriteLine("Apartment not found.");
+                Console.ReadKey();
+                return;
+            }
+            
+            Console.WriteLine($"\nInitial Price: {apartment.PricePerNight}");
+            Console.WriteLine($"Expected Price: {apartment.PricePerNight + 20} (if it worked correctly)");
+            Console.WriteLine("Starting 2 parallel threads to increase price by 10 each...");
+            Console.WriteLine("Please wait 3 seconds...\n");
+            
+            Task[] tasks = new Task[2];
+            for (int i = 0; i < tasks.Length; i++)
+            {
+                tasks[i] = Task.Run(() => apartment.IncreasePriceSafely(10));
+            }
+            
+            Task.WaitAll(tasks);
+            Console.WriteLine($"Actual Final Price: {apartment.PricePerNight}");
+
+            Console.WriteLine("\nPress any key to continue...");
+            Console.ReadKey();
         }
         
         private int ReadInt(string prompt)

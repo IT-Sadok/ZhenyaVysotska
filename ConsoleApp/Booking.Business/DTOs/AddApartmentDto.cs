@@ -3,7 +3,7 @@ namespace Booking.Business.DTOs;
 
 public class AddApartmentDto
 {
-    public int HostId { get; set; }
+    public List<int> HostIds { get; set; }
     public Address Address { get; set; }
     public ApartmentType Type { get; set; }
     public decimal PricePerNight { get; set; }

@@ -43,9 +43,6 @@ public class HostService
 
     public (bool IsSuccess, string Message) AddApartmentToHost(AddApartmentDto dto)
     {
-        var host = _repository.GetById(dto.HostId);
-        if (host == null) return (false, $"Host with id {dto.HostId} not found");
-        
         if(dto.PricePerNight <= 0)  return (false, "Price per night must be greater than 0");
         if(dto.NumberOfRooms <= 0) return (false, "Number of rooms must be greater than 0");
         
@@ -54,6 +51,16 @@ public class HostService
         if (string.IsNullOrWhiteSpace(dto.Address.Street)) return (false, "Address street must be set");
         if (string.IsNullOrWhiteSpace(dto.Address.HouseNumber)) return (false, "Number of house must be set");
 
+        var hostsToUpdate = new List<Host>();
+        foreach (int hostId in dto.HostIds)
+        {
+            var host = _repository.GetById(hostId);
+            if (host == null)
+            {
+                return (false, $"Host with id {hostId} not found. Operation aborted.");
+            }
+            hostsToUpdate.Add(host);
+        }
         var newApartment = new Apartment
         {
             Address = dto.Address,
@@ -63,9 +70,12 @@ public class HostService
             IsAvailable = dto.IsAvailable
         };
         
-        host.AddApartment(newApartment);
-        _repository.Update(host);
-        return (true, $"Host with id {newApartment.Id} has been added");
+        foreach (var host in hostsToUpdate)
+        {
+            host.AddApartment(newApartment);
+            _repository.Update(host);
+        }
+        return (true, $"Apartment with id {newApartment.Id} has been added");
     }
 
     public (bool IsSuccess, string Message) UpdateHost(UpdateHostDto dto)
