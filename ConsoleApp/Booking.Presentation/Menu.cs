@@ -13,7 +13,7 @@ namespace Booking.Presentation
             _hostService = hostService;
         }
 
-        public void Run()
+        public async Task RunAsync()
         {
             if (_hostService.GetAllHosts().Count == 0)
             {
@@ -73,10 +73,10 @@ namespace Booking.Presentation
                         DeleteHostUI();
                         break;
                     case "7":
-                        SimulateRaceConditionUI();
+                        await SimulateRaceConditionUIAsync();
                         break;
                     case "8":
-                        UpdatePriceByTwoHostsUI();
+                        await UpdatePriceByTwoHostsUIAsync();
                         break;
                     case "0":
                         exit = true;
@@ -259,7 +259,7 @@ namespace Booking.Presentation
             PrintResult(result.IsSuccess, result.Message);
         }
 
-        private void SimulateRaceConditionUI()
+        private async Task SimulateRaceConditionUIAsync()
         {
             Console.Clear();
             Console.WriteLine("Simulating race condition || Updating price in concurrent threads");
@@ -284,19 +284,33 @@ namespace Booking.Presentation
                 Console.ReadKey();
                 return;
             }
-            
+
+            int iterations = 1000;
+            decimal increasePrice = 10;
+            decimal expectedPrice = apartment.PricePerNight + (increasePrice * iterations * 2);
             Console.WriteLine($"\nInitial Price: {apartment.PricePerNight}");
-            Console.WriteLine($"Expected Price: {apartment.PricePerNight + 20} (if it worked correctly)");
+            Console.WriteLine($"Expected Price: {expectedPrice} (if it worked correctly)");
             Console.WriteLine("Starting 2 parallel threads to increase price by 10 each...");
             Console.WriteLine("Please wait 3 seconds...\n");
             
             Task[] tasks = new Task[2];
-            for (int i = 0; i < tasks.Length; i++)
+            tasks[0] = Task.Run(() =>
             {
-                tasks[i] = Task.Run(() => apartment.IncreasePriceWithRaceCondition(10));
-            }
+                for (int i = 0; i < iterations; i++)
+                {
+                    apartment.IncreasePriceWithRaceCondition(increasePrice);
+                }
+            });
             
-            Task.WaitAll(tasks);
+            tasks[1] = Task.Run(() =>
+            {
+                for (int i = 0; i < iterations; i++)
+                {
+                    apartment.IncreasePriceWithRaceCondition(increasePrice);
+                }
+            });
+            
+            await Task.WhenAll(tasks);
             
             Console.WriteLine($"Actual Final Price: {apartment.PricePerNight}  <-- ERROR! RACE CONDITION!");
 
@@ -304,7 +318,7 @@ namespace Booking.Presentation
             Console.ReadKey();
         }
 
-        private void UpdatePriceByTwoHostsUI()
+        private async Task UpdatePriceByTwoHostsUIAsync()
         {
             Console.Clear();
             Console.WriteLine("Updating price in 2 concurrent threads safely");
@@ -330,18 +344,33 @@ namespace Booking.Presentation
                 return;
             }
             
+            int iterations = 1000;
+            decimal increasePrice = 10;
+            decimal expectedPrice = apartment.PricePerNight + (increasePrice * iterations * 2);
             Console.WriteLine($"\nInitial Price: {apartment.PricePerNight}");
-            Console.WriteLine($"Expected Price: {apartment.PricePerNight + 20} (if it worked correctly)");
+            Console.WriteLine($"Expected Price: {expectedPrice} (if it worked correctly)");
             Console.WriteLine("Starting 2 parallel threads to increase price by 10 each...");
             Console.WriteLine("Please wait 3 seconds...\n");
             
             Task[] tasks = new Task[2];
-            for (int i = 0; i < tasks.Length; i++)
+
+            tasks[0] = Task.Run(() =>
             {
-                tasks[i] = Task.Run(() => apartment.IncreasePriceSafely(10));
-            }
+                for (int i = 0; i < iterations; i++)
+                {
+                    apartment.IncreasePriceSafely(increasePrice);
+                }
+            });
             
-            Task.WaitAll(tasks);
+            tasks[1] = Task.Run(() =>
+            {
+                for (int i = 0; i < iterations; i++)
+                {
+                    apartment.IncreasePriceSafely(increasePrice);
+                }
+            });
+           
+            await Task.WhenAll(tasks);
             Console.WriteLine($"Actual Final Price: {apartment.PricePerNight}");
 
             Console.WriteLine("\nPress any key to continue...");

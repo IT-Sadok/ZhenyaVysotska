@@ -26,8 +26,6 @@ public class Apartment
     
     public void IncreasePriceWithRaceCondition(decimal amount)
     {
-        decimal currentPrice = PricePerNight;
-        Thread.Sleep(3000);
-        PricePerNight =  currentPrice + amount;
+        PricePerNight += amount;
     }
 }
