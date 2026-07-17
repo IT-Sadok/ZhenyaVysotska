@@ -6,11 +6,11 @@ namespace Booking.Presentation;
 
 class Program
 {
-    static void Main(string[] args)
+    static async Task Main(string[] args)
     {
         IHostRepository repository = new FileHostRepository();
         HostService service = new HostService(repository);
         Menu menu = new Menu(service);
-        menu.Run();
+        await menu.RunAsync();
     }
 }

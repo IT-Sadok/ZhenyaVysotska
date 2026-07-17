@@ -2,6 +2,7 @@ namespace Booking.Domain.Models;
 
 public class Apartment
 {
+    private readonly Lock priceLock = new();
     private static int _nextId = 1;
     public int Id { get; set; }
     public Address Address { get; set; }
@@ -13,5 +14,18 @@ public class Apartment
     public Apartment()
     {
         Id = _nextId++;
+    }
+    
+    public void IncreasePriceSafely(decimal amount)
+    {
+        lock (priceLock)
+        {
+            PricePerNight += amount;
+        }
+    }
+    
+    public void IncreasePriceWithRaceCondition(decimal amount)
+    {
+        PricePerNight += amount;
     }
 }
