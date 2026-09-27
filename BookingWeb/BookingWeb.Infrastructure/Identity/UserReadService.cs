@@ -20,10 +20,7 @@ public sealed class UserReadService:IUserReadService
         
         if (!string.IsNullOrWhiteSpace(filter.Role))
         {
-            query = query.Where(u => _db.UserRoles
-                .Any(ur => u.Id == ur.UserId &&
-                           _db.Roles.Any(r => ur.RoleId == r.Id && r.Name == filter.Role)));
-            
+            query = query.Where(u => u.Roles.Any(r=> r.Name == filter.Role));
         }
         
         if (!string.IsNullOrWhiteSpace(filter.Email))
@@ -46,11 +43,7 @@ public sealed class UserReadService:IUserReadService
             .Select(u => new UserDto(
                 u.Id,
                 u.Email!,
-               _db.Roles
-                    .Where(r => _db.UserRoles.Any(ur => ur.RoleId == r.Id 
-                                                        && ur.UserId == u.Id))
-                    .Select(r => r.Name!)
-                    .ToList(),
+                u.Roles.Select(r=> r.Name!).ToList(),
                 u.DefaultPersona
             )).ToListAsync(ct);
         
