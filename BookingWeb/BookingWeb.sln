@@ -1,0 +1,63 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BookingWeb.Api", "BookingWeb.Api\BookingWeb.Api.csproj", "{E3FCD7B5-A33E-476E-A4DD-835E9EF8EF55}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BookingWeb.Application", "BookingWeb.Application\BookingWeb.Application.csproj", "{E2F0139D-402A-47B8-A11C-72EC18C095A1}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BookingWeb.Infrastructure", "BookingWeb.Infrastructure\BookingWeb.Infrastructure.csproj", "{62D5A917-0F53-47F2-B8AC-F2FDBCE5BBC2}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BookingWeb.Domain", "BookingWeb.Domain\BookingWeb.Domain.csproj", "{EE570BEB-FB7D-4FFB-B2C2-C505DFFF085C}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{30CCE867-8677-4262-8378-A6B90FB0FB46}"
+	ProjectSection(SolutionItems) = preProject
+		compose.yaml = compose.yaml
+	EndProjectSection
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{14DDC709-FD7B-4E2F-BE4D-3C8F3AE54A45}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "tests", "tests", "{640A1E27-86D9-40DC-8C1B-D0ECAF6CD9E3}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BookingWeb.UnitTests", "BookingWeb.UnitTests\BookingWeb.UnitTests.csproj", "{801685A1-3776-49DE-8EB9-A20944C4EBB4}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BookingWeb.IntegrationTests", "BookingWeb.IntegrationTests\BookingWeb.IntegrationTests.csproj", "{E1191E36-F8C9-4529-8071-26EB431663CB}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{E3FCD7B5-A33E-476E-A4DD-835E9EF8EF55}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{E3FCD7B5-A33E-476E-A4DD-835E9EF8EF55}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{E3FCD7B5-A33E-476E-A4DD-835E9EF8EF55}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{E3FCD7B5-A33E-476E-A4DD-835E9EF8EF55}.Release|Any CPU.Build.0 = Release|Any CPU
+		{E2F0139D-402A-47B8-A11C-72EC18C095A1}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{E2F0139D-402A-47B8-A11C-72EC18C095A1}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{E2F0139D-402A-47B8-A11C-72EC18C095A1}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{E2F0139D-402A-47B8-A11C-72EC18C095A1}.Release|Any CPU.Build.0 = Release|Any CPU
+		{62D5A917-0F53-47F2-B8AC-F2FDBCE5BBC2}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{62D5A917-0F53-47F2-B8AC-F2FDBCE5BBC2}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{62D5A917-0F53-47F2-B8AC-F2FDBCE5BBC2}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{62D5A917-0F53-47F2-B8AC-F2FDBCE5BBC2}.Release|Any CPU.Build.0 = Release|Any CPU
+		{EE570BEB-FB7D-4FFB-B2C2-C505DFFF085C}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{EE570BEB-FB7D-4FFB-B2C2-C505DFFF085C}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{EE570BEB-FB7D-4FFB-B2C2-C505DFFF085C}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{EE570BEB-FB7D-4FFB-B2C2-C505DFFF085C}.Release|Any CPU.Build.0 = Release|Any CPU
+		{801685A1-3776-49DE-8EB9-A20944C4EBB4}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{801685A1-3776-49DE-8EB9-A20944C4EBB4}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{801685A1-3776-49DE-8EB9-A20944C4EBB4}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{801685A1-3776-49DE-8EB9-A20944C4EBB4}.Release|Any CPU.Build.0 = Release|Any CPU
+		{E1191E36-F8C9-4529-8071-26EB431663CB}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{E1191E36-F8C9-4529-8071-26EB431663CB}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{E1191E36-F8C9-4529-8071-26EB431663CB}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{E1191E36-F8C9-4529-8071-26EB431663CB}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{E3FCD7B5-A33E-476E-A4DD-835E9EF8EF55} = {14DDC709-FD7B-4E2F-BE4D-3C8F3AE54A45}
+		{E2F0139D-402A-47B8-A11C-72EC18C095A1} = {14DDC709-FD7B-4E2F-BE4D-3C8F3AE54A45}
+		{EE570BEB-FB7D-4FFB-B2C2-C505DFFF085C} = {14DDC709-FD7B-4E2F-BE4D-3C8F3AE54A45}
+		{62D5A917-0F53-47F2-B8AC-F2FDBCE5BBC2} = {14DDC709-FD7B-4E2F-BE4D-3C8F3AE54A45}
+		{801685A1-3776-49DE-8EB9-A20944C4EBB4} = {640A1E27-86D9-40DC-8C1B-D0ECAF6CD9E3}
+		{E1191E36-F8C9-4529-8071-26EB431663CB} = {640A1E27-86D9-40DC-8C1B-D0ECAF6CD9E3}
+	EndGlobalSection
+EndGlobal
