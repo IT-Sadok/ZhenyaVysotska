@@ -3,51 +3,46 @@ using BookingWeb.Application.Profiles;
 using BookingWeb.Application.Profiles.Requests;
 using BookingWeb.Application.Results;
 using BookingWeb.Domain.Models;
-using FluentValidation;
 using Moq;
 using Shouldly;
 
-namespace BookingWeb.UnitTests.Profiles;
-
-public class ProfileServiceTests
+public sealed class ProfileServiceTests
 {
-    private readonly Mock<IUserProfileRepository> _profiles = new();
-    private readonly Mock<IUnitOfWork> _unitOfWork = new();
-    
-    private ProfileService CreateSut() => new(
-        new IValidator<UpdateProfileRequest>[]
-        {
-            new UpdateProfileRequestValidator()
-        },
-        _profiles.Object,
-        _unitOfWork.Object);
-
     private static readonly Guid UserId = Guid.NewGuid();
 
-    private static UpdateProfileRequest ValidUpdate() =>
-        new("Oksana", "Koval", "Нове біо", "https://example.com/new.png");
+    private readonly Mock<IUserProfileRepository> _profiles = new();
+    private readonly Mock<IUnitOfWork> _unitOfWork = new();
+    private readonly ProfileService _sut;
 
-
-    [Fact]
-    public async Task Get_missing_profile_returns_not_found()
+    public ProfileServiceTests()
     {
-        _profiles.Setup(p => p.GetByUserIdAsync(UserId, It.IsAny<CancellationToken>()))
+        _sut = new ProfileService(_profiles.Object, _unitOfWork.Object);
+    }
+
+    private UserProfile ArrangeExistingProfile()
+    {
+        var profile = UserProfile.Create(UserId, "Ivan", "Petrenko");
+
+        _profiles
+            .Setup(repository => repository.GetByUserIdAsync(UserId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(profile);
+
+        return profile;
+    }
+
+    private void ArrangeMissingProfile()
+    {
+        _profiles
+            .Setup(repository => repository.GetByUserIdAsync(UserId, It.IsAny<CancellationToken>()))
             .ReturnsAsync((UserProfile?)null);
-
-        var result = await CreateSut().GetAsync(UserId);
-
-        result.IsFailure.ShouldBeTrue();
-        result.Error.Code.ShouldBe("Profile.NotFound");
     }
 
     [Fact]
-    public async Task Get_existing_profile_returns_dto()
+    public async Task Get_ShouldReturnProfile_WhenProfileExists()
     {
-        var profile = UserProfile.Create(UserId, "Ivan", "Petrenko");
-        _profiles.Setup(p => p.GetByUserIdAsync(UserId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(profile);
+        ArrangeExistingProfile();
 
-        var result = await CreateSut().GetAsync(UserId);
+        var result = await _sut.GetAsync(UserId);
 
         result.IsSuccess.ShouldBeTrue();
         result.Value.UserId.ShouldBe(UserId);
@@ -56,47 +51,50 @@ public class ProfileServiceTests
     }
 
     [Fact]
-    public async Task Update_invalid_input_skips_repo_and_save()
+    public async Task Get_ShouldReturnNotFound_WhenProfileIsMissing()
     {
-        var badRequest = ValidUpdate() with { FirstName = "" };
+        ArrangeMissingProfile();
 
-        var result = await CreateSut().UpdateAsync(UserId, badRequest);
-
-        result.IsFailure.ShouldBeTrue();
-        result.Error.ShouldBeOfType<ValidationError>();
-        _profiles.Verify(p => p.GetByUserIdAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()), Times.Never);
-        _unitOfWork.Verify(u => u.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Never);
-    }
-
-    [Fact]
-    public async Task Update_missing_profile_returns_not_found_and_does_not_save()
-    {
-        _profiles.Setup(p => p.GetByUserIdAsync(UserId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync((UserProfile?)null);
-
-        var result = await CreateSut().UpdateAsync(UserId, ValidUpdate());
+        var result = await _sut.GetAsync(UserId);
 
         result.IsFailure.ShouldBeTrue();
         result.Error.Code.ShouldBe("Profile.NotFound");
-        _unitOfWork.Verify(u => u.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Never);
+        result.Error.Type.ShouldBe(ErrorType.NotFound);
     }
-
+    
     [Fact]
-    public async Task Update_success_applies_changes_and_saves_once()
+    public async Task Update_ShouldApplyChangesToProfile_WhenProfileExists()
     {
-        var profile = UserProfile.Create(UserId, "Old", "Name");
-        _profiles.Setup(p => p.GetByUserIdAsync(UserId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(profile);
+        var profile = ArrangeExistingProfile();
 
-        var result = await CreateSut().UpdateAsync(UserId, ValidUpdate());
+        var result = await _sut.UpdateAsync(
+            UserId, new UpdateProfileRequest("Oksana", "Koval", "Loves travelling", "https://example.com/a.png"));
 
         result.IsSuccess.ShouldBeTrue();
         result.Value.FirstName.ShouldBe("Oksana");
-        result.Value.LastName.ShouldBe("Koval");
-        result.Value.Bio.ShouldBe("Нове біо");
-
-        profile.FirstName.ShouldBe("Oksana");
-        _unitOfWork.Verify(u => u.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
+        result.Value.Bio.ShouldBe("Loves travelling");
+        profile.LastName.ShouldBe("Koval");
+        profile.AvatarUrl.ShouldBe("https://example.com/a.png");
     }
 
+    [Fact]
+    public async Task Update_ShouldSaveChangesOnce_WhenProfileExists()
+    {
+        ArrangeExistingProfile();
+
+        await _sut.UpdateAsync(UserId, new UpdateProfileRequest("Oksana", "Koval", null, null));
+
+        _unitOfWork.Verify(unitOfWork => unitOfWork.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task Update_ShouldReturnNotFoundWithoutSaving_WhenProfileIsMissing()
+    {
+        ArrangeMissingProfile();
+
+        var result = await _sut.UpdateAsync(UserId, new UpdateProfileRequest("Oksana", "Koval", null, null));
+
+        result.Error.Code.ShouldBe("Profile.NotFound");
+        _unitOfWork.Verify(unitOfWork => unitOfWork.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Never);
+    }
 }

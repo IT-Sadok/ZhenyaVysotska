@@ -1,91 +1,115 @@
 using BookingWeb.Application.Admin.Validators;
 using BookingWeb.Application.Constants;
 using BookingWeb.Application.Models;
+using BookingWeb.Domain;
 using FluentValidation.TestHelper;
 
 namespace BookingWeb.UnitTests.Admin;
 
-public class UserFilterDtoValidatorTests
+public sealed class UserFilterDtoValidatorTests
 {
     private readonly UserFilterDtoValidator _validator = new();
-    
-    private static UserFilterDto Valid() => new(Role: null, Email: null, SortBy: null, Page: 1, PageSize: 20);
+
+    private static UserFilterDto CreateEmptyFilter()
+    {
+        return new UserFilterDto(Role: null, Email: null, SortBy: null, Page: 1, PageSize: 20);
+    }
 
     [Fact]
-    public void Empty_filter_passes()
+    public void Validate_ShouldPass_WhenFilterIsEmpty()
     {
-        var result = _validator.TestValidate(Valid());
+        var result = _validator.TestValidate(CreateEmptyFilter());
+
         result.ShouldNotHaveAnyValidationErrors();
     }
 
     [Theory]
     [InlineData("")]
     [InlineData("   ")]
-    public void Blank_role_is_treated_as_absent(string role)
+    public void Validate_ShouldPass_WhenRoleIsBlank(string role)
     {
-        var result = _validator.TestValidate(Valid() with { Role = role });
-        result.ShouldNotHaveValidationErrorFor(x => x.Role);
-    }
+        var result = _validator.TestValidate(CreateEmptyFilter() with { Role = role });
 
-    [Fact]
-    public void Unknown_role_fails()
-    {
-        var result = _validator.TestValidate(Valid() with { Role = "Superuser" });
-        result.ShouldHaveValidationErrorFor(x => x.Role);
+        result.ShouldNotHaveValidationErrorFor(filter => filter.Role);
     }
 
     [Theory]
     [InlineData("Client")]
     [InlineData("Host")]
-    [InlineData("Admin")] 
-    public void Known_roles_pass(string role)
+    [InlineData("Admin")]
+    public void Validate_ShouldPass_WhenRoleIsKnown(string role)
     {
-        var result = _validator.TestValidate(Valid() with { Role = role });
-        result.ShouldNotHaveValidationErrorFor(x => x.Role);
+        var result = _validator.TestValidate(CreateEmptyFilter() with { Role = role });
+
+        result.ShouldNotHaveValidationErrorFor(filter => filter.Role);
+    }
+    
+    [Theory]
+    [InlineData("cLient")]
+    [InlineData("host")]
+    [InlineData("ADmin")]
+    [InlineData("hOst")]
+    public void Validate_ShouldPass_WhenRoleIsKnownInAnyCase(string role)
+    {
+        var result = _validator.TestValidate(CreateEmptyFilter() with { Role = role });
+
+        result.ShouldNotHaveValidationErrorFor(filter => filter.Role);
     }
 
     [Fact]
-    public void Unknown_sort_token_fails()
+    public void Validate_ShouldFail_WhenRoleIsUnknown()
     {
-        var result = _validator.TestValidate(Valid() with { SortBy = "email" });
-        result.ShouldHaveValidationErrorFor(x => x.SortBy);
+        var result = _validator.TestValidate(CreateEmptyFilter() with { Role = "Superuser" });
+
+        result.ShouldHaveValidationErrorFor(filter => filter.Role);
+    }
+
+    [Theory]
+    [InlineData(SortTokens.EmailAsc)]
+    [InlineData(SortTokens.EmailDesc)]
+    public void Validate_ShouldPass_WhenSortTokenIsKnown(string sortBy)
+    {
+        var result = _validator.TestValidate(CreateEmptyFilter() with { SortBy = sortBy });
+
+        result.ShouldNotHaveValidationErrorFor(filter => filter.SortBy);
     }
 
     [Fact]
-    public void Known_sort_tokens_pass()
+    public void Validate_ShouldFail_WhenSortTokenIsUnknown()
     {
-        _validator.TestValidate(Valid() with { SortBy = SortTokens.EmailAsc })
-            .ShouldNotHaveValidationErrorFor(x => x.SortBy);
-        _validator.TestValidate(Valid() with { SortBy = SortTokens.EmailDesc })
-            .ShouldNotHaveValidationErrorFor(x => x.SortBy);
+        var result = _validator.TestValidate(CreateEmptyFilter() with { SortBy = "email" });
+
+        result.ShouldHaveValidationErrorFor(filter => filter.SortBy);
     }
 
     [Theory]
     [InlineData(0)]
     [InlineData(-1)]
-    public void Page_below_one_fails(int page)
+    public void Validate_ShouldFail_WhenPageIsLessThanOne(int page)
     {
-        var result = _validator.TestValidate(Valid() with { Page = page });
-        result.ShouldHaveValidationErrorFor(x => x.Page);
+        var result = _validator.TestValidate(CreateEmptyFilter() with { Page = page });
+
+        result.ShouldHaveValidationErrorFor(filter => filter.Page);
     }
 
     [Theory]
     [InlineData(0)]
-    [InlineData(101)]     
-    [InlineData(1000000)] 
-    public void PageSize_out_of_range_fails(int pageSize)
+    [InlineData(101)]
+    [InlineData(100_000)] 
+    public void Validate_ShouldFail_WhenPageSizeIsOutOfRange(int pageSize)
     {
-        var result = _validator.TestValidate(Valid() with { PageSize = pageSize });
-        result.ShouldHaveValidationErrorFor(x => x.PageSize);
+        var result = _validator.TestValidate(CreateEmptyFilter() with { PageSize = pageSize });
+
+        result.ShouldHaveValidationErrorFor(filter => filter.PageSize);
     }
 
     [Theory]
     [InlineData(1)]
-    [InlineData(20)]
-    [InlineData(100)] 
-    public void PageSize_in_range_passes(int pageSize)
+    [InlineData(100)]
+    public void Validate_ShouldPass_WhenPageSizeIsOnBoundary(int pageSize)
     {
-        var result = _validator.TestValidate(Valid() with { PageSize = pageSize });
-        result.ShouldNotHaveValidationErrorFor(x => x.PageSize);
+        var result = _validator.TestValidate(CreateEmptyFilter() with { PageSize = pageSize });
+
+        result.ShouldNotHaveValidationErrorFor(filter => filter.PageSize);
     }
 }

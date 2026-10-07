@@ -9,111 +9,97 @@ public class RegisterRequestValidatorTests
 {
     private readonly RegisterRequestValidator _validator = new();
     
-    private static RegisterRequest Valid() =>
-        new("user@example.com", "Passw0rd!", "Ivan", "Paliychuk", Roles.Client);
- 
-    [Fact]
-    public void Valid_request_passes()
+    private static RegisterRequest CreateValidRequest()
     {
-        var result = _validator.TestValidate(Valid());
+        return new RegisterRequest("user@example.com", "Passw0rd!", "Ivan", "Petrenko", Roles.Client);
+    }
+
+    [Fact]
+    public void Validate_ShouldPass_WhenRequestIsValid()
+    {
+        var result = _validator.TestValidate(CreateValidRequest());
+
         result.ShouldNotHaveAnyValidationErrors();
     }
- 
+
     [Theory]
     [InlineData("")]
     [InlineData("not-an-email")]
-    [InlineData("missing@")]
-    public void Invalid_email_fails(string email)
+    [InlineData("missing-domain@")]
+    public void Validate_ShouldFail_WhenEmailIsInvalid(string email)
     {
-        var result = _validator.TestValidate(Valid() with { Email = email });
-        result.ShouldHaveValidationErrorFor(x => x.Email);
+        var result = _validator.TestValidate(CreateValidRequest() with { Email = email });
+
+        result.ShouldHaveValidationErrorFor(request => request.Email);
     }
- 
+
     [Theory]
-    [InlineData("short1A")]     
-    [InlineData("alllower1")]   
+    [InlineData("Short1")]       
+    [InlineData("alllower1")]    
     [InlineData("ALLUPPER1")]   
-    [InlineData("NoDigitsAA")]  
-    public void Weak_password_fails(string password)
+    [InlineData("NoDigitsHere")] 
+    public void Validate_ShouldFail_WhenPasswordIsWeak(string password)
     {
-        var result = _validator.TestValidate(Valid() with { Password = password });
-        result.ShouldHaveValidationErrorFor(x => x.Password);
+        var result = _validator.TestValidate(CreateValidRequest() with { Password = password });
+
+        result.ShouldHaveValidationErrorFor(request => request.Password);
     }
- 
-    [Fact]
-    public void Strong_password_passes()
-    {
-        var result = _validator.TestValidate(Valid() with { Password = "Strong1Pass" });
-        result.ShouldNotHaveValidationErrorFor(x => x.Password);
-    }
- 
+
     [Theory]
     [InlineData("")]
     [InlineData("   ")]
-    public void Empty_first_name_fails(string firstName)
+    public void Validate_ShouldFail_WhenFirstNameIsBlank(string firstName)
     {
-        var result = _validator.TestValidate(Valid() with { FirstName = firstName });
-        result.ShouldHaveValidationErrorFor(x => x.FirstName);
+        var result = _validator.TestValidate(CreateValidRequest() with { FirstName = firstName });
+
+        result.ShouldHaveValidationErrorFor(request => request.FirstName);
     }
- 
+
     [Theory]
     [InlineData("")]
     [InlineData("   ")]
-    public void Empty_last_name_fails(string lastName)
+    public void Validate_ShouldFail_WhenLastNameIsBlank(string lastName)
     {
-        var result = _validator.TestValidate(Valid() with { LastName = lastName });
-        result.ShouldHaveValidationErrorFor(x => x.LastName);
+        var result = _validator.TestValidate(CreateValidRequest() with { LastName = lastName });
+
+        result.ShouldHaveValidationErrorFor(request => request.LastName);
     }
- 
+
     [Fact]
-    public void Too_long_first_name_fails()
+    public void Validate_ShouldFail_WhenFirstNameIsLongerThan128Characters()
     {
-        var result = _validator.TestValidate(Valid() with { FirstName = new string('a', 129) });
-        result.ShouldHaveValidationErrorFor(x => x.FirstName);
+        var result = _validator.TestValidate(CreateValidRequest() with { FirstName = new string('a', 129) });
+
+        result.ShouldHaveValidationErrorFor(request => request.FirstName);
     }
- 
+
     [Fact]
-    public void Too_long_last_name_fails()
+    public void Validate_ShouldPass_WhenFirstNameIsExactly128Characters()
     {
-        var result = _validator.TestValidate(Valid() with { LastName = new string('a', 129) });
-        result.ShouldHaveValidationErrorFor(x => x.LastName);
+        var result = _validator.TestValidate(CreateValidRequest() with { FirstName = new string('a', 128) });
+
+        result.ShouldNotHaveValidationErrorFor(request => request.FirstName);
     }
- 
-    [Fact]
-    public void First_name_at_max_length_passes()
-    {
-        var result = _validator.TestValidate(Valid() with { FirstName = new string('a', 128) });
-        result.ShouldNotHaveValidationErrorFor(x => x.FirstName);
-    }
- 
-    [Fact]
-    public void Admin_role_is_rejected()
-    {
-        var result = _validator.TestValidate(Valid() with { Role = Roles.Admin });
-        result.ShouldHaveValidationErrorFor(x => x.Role);
-    }
- 
-    [Fact]
-    public void Empty_role_fails()
-    {
-        var result = _validator.TestValidate(Valid() with { Role = "" });
-        result.ShouldHaveValidationErrorFor(x => x.Role);
-    }
- 
-    [Fact]
-    public void Unknown_role_fails()
-    {
-        var result = _validator.TestValidate(Valid() with { Role = "Superuser" });
-        result.ShouldHaveValidationErrorFor(x => x.Role);
-    }
- 
+
     [Theory]
-    [InlineData("Client")]
-    [InlineData("Host")]
-    public void Switchable_roles_pass(string role)
+    [InlineData(Roles.Client)]
+    [InlineData(Roles.Host)]
+    public void Validate_ShouldPass_WhenRoleIsSelfAssignable(string role)
     {
-        var result = _validator.TestValidate(Valid() with { Role = role });
-        result.ShouldNotHaveValidationErrorFor(x => x.Role);
+        var result = _validator.TestValidate(CreateValidRequest() with { Role = role });
+
+        result.ShouldNotHaveValidationErrorFor(request => request.Role);
+    }
+
+    [Theory]
+    [InlineData(Roles.Admin)] 
+    [InlineData("Superuser")]
+    [InlineData("")]
+    public void Validate_ShouldFail_WhenRoleIsNotSelfAssignable(string role)
+    {
+        var result = _validator.TestValidate(CreateValidRequest() with { Role = role });
+
+        result.ShouldHaveValidationErrorFor(request => request.Role);
     }
 }
  

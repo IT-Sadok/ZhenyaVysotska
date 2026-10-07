@@ -4,59 +4,68 @@ using FluentValidation.TestHelper;
 
 namespace BookingWeb.UnitTests.Profiles;
 
-public class UpdateProfileRequestValidatorTests
+public sealed class UpdateProfileRequestValidatorTests
 {
     private readonly UpdateProfileRequestValidator _validator = new();
 
-    private static UpdateProfileRequest Valid() =>
-        new("Ivan", "Petrenko", "Люблю подорожі", "https://example.com/a.png");
-
-    [Fact]
-    public void Valid_request_passes()
+    private static UpdateProfileRequest CreateValidRequest()
     {
-        _validator.TestValidate(Valid()).ShouldNotHaveAnyValidationErrors();
+        return new UpdateProfileRequest("Ivan", "Petrenko", "Loves travelling", "https://example.com/a.png");
     }
 
     [Fact]
-    public void Empty_first_name_fails()
+    public void Validate_ShouldPass_WhenRequestIsValid()
     {
-        _validator.TestValidate(Valid() with { FirstName = "" })
-            .ShouldHaveValidationErrorFor(x => x.FirstName);
+        var result = _validator.TestValidate(CreateValidRequest());
+
+        result.ShouldNotHaveAnyValidationErrors();
     }
 
     [Fact]
-    public void Empty_last_name_fails()
+    public void Validate_ShouldPass_WhenBioAndAvatarAreNull()
     {
-        _validator.TestValidate(Valid() with { LastName = "" })
-            .ShouldHaveValidationErrorFor(x => x.LastName);
+        var result = _validator.TestValidate(CreateValidRequest() with { Bio = null, AvatarUrl = null });
+
+        result.ShouldNotHaveAnyValidationErrors();
     }
 
     [Fact]
-    public void Too_long_first_name_fails()
+    public void Validate_ShouldFail_WhenFirstNameIsEmpty()
     {
-        _validator.TestValidate(Valid() with { FirstName = new string('a', 129) })
-            .ShouldHaveValidationErrorFor(x => x.FirstName);
+        var result = _validator.TestValidate(CreateValidRequest() with { FirstName = "" });
+
+        result.ShouldHaveValidationErrorFor(request => request.FirstName);
     }
 
     [Fact]
-    public void Too_long_bio_fails()
+    public void Validate_ShouldFail_WhenLastNameIsEmpty()
     {
-        _validator.TestValidate(Valid() with { Bio = new string('a', 1001) })
-            .ShouldHaveValidationErrorFor(x => x.Bio);
+        var result = _validator.TestValidate(CreateValidRequest() with { LastName = "" });
+
+        result.ShouldHaveValidationErrorFor(request => request.LastName);
     }
 
     [Fact]
-    public void Null_bio_and_avatar_pass()
+    public void Validate_ShouldFail_WhenFirstNameIsLongerThan128Characters()
     {
-        _validator.TestValidate(Valid() with { Bio = null, AvatarUrl = null })
-            .ShouldNotHaveAnyValidationErrors();
+        var result = _validator.TestValidate(CreateValidRequest() with { FirstName = new string('a', 129) });
+
+        result.ShouldHaveValidationErrorFor(request => request.FirstName);
     }
 
     [Fact]
-    public void Too_long_avatar_url_fails()
+    public void Validate_ShouldFail_WhenBioIsLongerThan1000Characters()
     {
-        _validator.TestValidate(Valid() with { AvatarUrl = "https://x/" + new string('a', 500) })
-            .ShouldHaveValidationErrorFor(x => x.AvatarUrl);
+        var result = _validator.TestValidate(CreateValidRequest() with { Bio = new string('a', 1001) });
+
+        result.ShouldHaveValidationErrorFor(request => request.Bio);
     }
 
+    [Fact]
+    public void Validate_ShouldFail_WhenAvatarUrlIsLongerThan500Characters()
+    {
+        var result = _validator.TestValidate(CreateValidRequest() with { AvatarUrl = new string('a', 501) });
+
+        result.ShouldHaveValidationErrorFor(request => request.AvatarUrl);
+    }
 }

@@ -11,48 +11,55 @@ using Shouldly;
 
 namespace BookingWeb.UnitTests.Auth;
 
-public class AuthServiceTests
+public sealed class AuthServiceTests
 {
+    private static readonly DateTime AccessTokenExpiresAtUtc = new(
+        2026, 1, 15, 12, 15, 0, DateTimeKind.Utc);
+    private static readonly DateTimeOffset RefreshTokenExpiresAtUtc = new(
+        2026, 1, 22, 12, 0, 0, TimeSpan.Zero);
+
     private readonly Mock<IIdentityService> _identity = new();
     private readonly Mock<IJwtTokenGenerator> _jwt = new();
-    private readonly Mock<IRefreshTokenService> _refresh = new();
+    private readonly Mock<IRefreshTokenService> _refreshTokens = new();
+    private readonly Mock<IUnitOfWork> _unitOfWork = new();
 
-    private AuthService CreateSut() => new(
-        _identity.Object,
-        _jwt.Object,
-        _refresh.Object,
-        new IValidator<RegisterRequest>[] { new RegisterRequestValidator() },
-        new IValidator<LoginRequest>[] { new LoginRequestValidator() });
+    private readonly AuthService _sut;
 
-    private static UserDto UserWith(params string[] roles) =>
-        new(Guid.NewGuid(), "user@example.com", roles, roles.FirstOrDefault());
-    
-    private static UserDto UserWithId(Guid id, params string[] roles) =>
-        new(id, "user@example.com", roles, roles.FirstOrDefault());
-
-    private void SetupTokenPair()
+    public AuthServiceTests()
     {
-        _jwt.Setup(j => j.GenerateToken(It.IsAny<Guid>(), It.IsAny<string>(),
-                It.IsAny<IEnumerable<string>>(), It.IsAny<string>()))
-            .Returns(new TokenResult("access-token", DateTime.UtcNow.AddMinutes(60)));
-        _refresh.Setup(r => r.IssueAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new RefreshTokenResult("refresh-token", DateTimeOffset.UtcNow.AddDays(7)));
+        _jwt
+            .Setup(jwt => jwt.GenerateToken(It.IsAny<Guid>(), It.IsAny<string>(), 
+                It.IsAny<IEnumerable<string>>()))
+            .Returns(new TokenResult("access-token", AccessTokenExpiresAtUtc));
+
+        _refreshTokens
+            .Setup(service => service.IssueAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new RefreshTokenResult("refresh-token", RefreshTokenExpiresAtUtc));
+
+        _sut = new AuthService(_identity.Object, _jwt.Object, _refreshTokens.Object, _unitOfWork.Object);
     }
 
-    private static RegisterRequest ValidRegister() =>
-        new("user@example.com", "Passw0rd!", "Ivan", "Paliychuk", Roles.Client);
-    
-    [Fact]
-    public async Task Register_success_returns_token_pair()
+    private static UserDto CreateUser(params string[] roles)
     {
-        _identity.Setup(i => i.RegisterAsync(
-                It.IsAny<string>(), It.IsAny<string>(), 
-                It.IsAny<string>(), It.IsAny<string>(), 
-                It.IsAny<string>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(Result.Success(UserWith(Roles.Client)));
-        SetupTokenPair();
+        return new UserDto(Guid.NewGuid(), "user@example.com", roles);
+    }
 
-        var result = await CreateSut().RegisterAsync(ValidRegister());
+    private static RegisterRequest CreateRegisterRequest()
+    {
+        return new RegisterRequest(
+            "user@example.com", "Passw0rd!", "Ivan", "Petrenko", Roles.Client);
+    }
+
+    [Fact]
+    public async Task Register_ShouldReturnTokenPair_WhenIdentityCreatesUser()
+    {
+        _identity
+            .Setup(identity => identity.RegisterAsync(
+                It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(),
+                It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(CreateUser(Roles.Client));
+
+        var result = await _sut.RegisterAsync(CreateRegisterRequest());
 
         result.IsSuccess.ShouldBeTrue();
         result.Value.AccessToken.ShouldBe("access-token");
@@ -60,205 +67,204 @@ public class AuthServiceTests
     }
 
     [Fact]
-    public async Task Register_invalid_input_skips_identity()
+    public async Task Register_ShouldSaveRefreshToken_WhenIdentityCreatesUser()
     {
-        var badRequest = ValidRegister() with { Email = "not-an-email" };
+        _identity
+            .Setup(identity => identity.RegisterAsync(
+                It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(),
+                It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(CreateUser(Roles.Client));
 
-        var result = await CreateSut().RegisterAsync(badRequest);
+        await _sut.RegisterAsync(CreateRegisterRequest());
 
-        result.IsFailure.ShouldBeTrue();
-        result.Error.ShouldBeOfType<ValidationError>();
-        _identity.Verify(i => i.RegisterAsync(
-                It.IsAny<string>(), It.IsAny<string>(),
-            It.IsAny<string>(), It.IsAny<string>(), 
-                It.IsAny<string>(), It.IsAny<CancellationToken>()),
-            Times.Never); 
+        _unitOfWork.Verify(unitOfWork => unitOfWork.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [Fact]
-    public async Task Register_taken_email_issues_no_token()
+    public async Task Register_ShouldReturnErrorWithoutIssuingTokens_WhenRegistrationFails()
     {
-        _identity.Setup(i => i.RegisterAsync(
-                It.IsAny<string>(), It.IsAny<string>(),
-                It.IsAny<string>(), It.IsAny<string>(), 
-                It.IsAny<string>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(Result.Failure<UserDto>(AuthErrors.EmailAlreadyUsed));
+        _identity
+            .Setup(identity => identity.RegisterAsync(
+                It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(),
+                It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(AuthErrors.EmailAlreadyUsed);
 
-        var result = await CreateSut().RegisterAsync(ValidRegister());
+        var result = await _sut.RegisterAsync(CreateRegisterRequest());
 
         result.IsFailure.ShouldBeTrue();
-        result.Error.Code.ShouldBe(AuthErrors.EmailAlreadyUsed.Code);
-        _refresh.Verify(r => r.IssueAsync(
-            It.IsAny<Guid>(), It.IsAny<CancellationToken>()), Times.Never);
+        result.Error.ShouldBe(AuthErrors.EmailAlreadyUsed);
+        _refreshTokens.Verify(service => service.IssueAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()), Times.Never);
+        _unitOfWork.Verify(unitOfWork => unitOfWork.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Never);
     }
 
-    
     [Fact]
-    public async Task Login_success_returns_token_pair()
+    public async Task Login_ShouldReturnTokenPair_WhenCredentialsAreValid()
     {
-        _identity.Setup(i => i.ValidateCredentialsAsync(
-                It.IsAny<string>(), It.IsAny<string>(),
-                It.IsAny<CancellationToken>()))
-            .ReturnsAsync(Result.Success(UserWith(Roles.Client)));
-        SetupTokenPair();
+        _identity
+            .Setup(identity => identity.ValidateCredentialsAsync(
+                It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(CreateUser(Roles.Client));
 
-        var result = await CreateSut().LoginAsync(new LoginRequest("user@example.com", "Passw0rd!"));
+        var result = await _sut.LoginAsync(new LoginRequest("user@example.com", "Passw0rd!"));
 
         result.IsSuccess.ShouldBeTrue();
         result.Value.RefreshToken.ShouldBe("refresh-token");
     }
 
     [Fact]
-    public async Task Login_bad_credentials_issues_no_token()
+    public async Task Login_ShouldReturnErrorWithoutIssuingTokens_WhenCredentialsAreWrong()
     {
-        _identity.Setup(i => i.ValidateCredentialsAsync(It.IsAny<string>(), It.IsAny<string>(),
-                It.IsAny<CancellationToken>()))
-            .ReturnsAsync(Result.Failure<UserDto>(AuthErrors.InvalidCredentials));
+        _identity
+            .Setup(identity => identity.ValidateCredentialsAsync(
+                It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(AuthErrors.InvalidCredentials);
 
-        var result = await CreateSut().LoginAsync(new LoginRequest("user@example.com", "wrongpass"));
+        var result = await _sut.LoginAsync(new LoginRequest("user@example.com", "wrong-password"));
 
-        result.IsFailure.ShouldBeTrue();
-        _refresh.Verify(r => r.IssueAsync(
-            It.IsAny<Guid>(), It.IsAny<CancellationToken>()), Times.Never);
+        result.Error.ShouldBe(AuthErrors.InvalidCredentials);
+        _refreshTokens.Verify(service => service.IssueAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()), Times.Never);
     }
-
-    [Fact]
-    public async Task Login_invalid_input_skips_identity()
-    {
-        var result = await CreateSut().LoginAsync(new LoginRequest("", ""));
-
-        result.IsFailure.ShouldBeTrue();
-        result.Error.ShouldBeOfType<ValidationError>();
-        _identity.Verify(i => i.ValidateCredentialsAsync(It.IsAny<string>(), It.IsAny<string>(),
-            It.IsAny<CancellationToken>()), Times.Never);
-    }
-
     
     [Fact]
-    public async Task EnablePersona_adds_role_and_switches()
+    public async Task Refresh_ShouldRevokeOldTokenAndIssueNewOne_WhenTokenIsValid()
+    {
+        var user = CreateUser(Roles.Client);
+
+        _refreshTokens
+            .Setup(service => service.ValidateAsync("old-token", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(user.Id);
+        _identity
+            .Setup(identity => identity.GetUserByIdAsync(user.Id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(user);
+
+        var result = await _sut.RefreshAsync("old-token");
+
+        result.IsSuccess.ShouldBeTrue();
+        _refreshTokens.Verify(service => service.RevokeAsync("old-token", It.IsAny<CancellationToken>()), Times.Once);
+        _refreshTokens.Verify(service => service.IssueAsync(user.Id, It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task Refresh_ShouldSaveRotationOnce_WhenTokenIsValid()
+    {
+        var user = CreateUser(Roles.Client);
+
+        _refreshTokens
+            .Setup(service => service.ValidateAsync("old-token", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(user.Id);
+        _identity
+            .Setup(identity => identity.GetUserByIdAsync(user.Id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(user);
+
+        await _sut.RefreshAsync("old-token");
+
+        _unitOfWork.Verify(unitOfWork => unitOfWork.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task Refresh_ShouldReturnTokenErrorWithoutLoadingUser_WhenTokenIsInvalid()
+    {
+        _refreshTokens
+            .Setup(service => service.ValidateAsync("bad-token", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(RefreshTokenErrors.Invalid);
+
+        var result = await _sut.RefreshAsync("bad-token");
+
+        result.Error.ShouldBe(RefreshTokenErrors.Invalid);
+        _identity.Verify(identity => identity.GetUserByIdAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()), Times.Never);
+        _refreshTokens.Verify(service => service.IssueAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task Refresh_ShouldRevokeAllSessionsWithoutIssuingTokens_WhenUserNoLongerExists()
     {
         var userId = Guid.NewGuid();
-        _identity.Setup(i => i.AddToRoleAsync(
-                userId, Roles.Host, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(Result.Success(UserWith(Roles.Client, Roles.Host)));
-        _identity.Setup(i => i.SetDefaultPersonaAsync(
-                userId, Roles.Host, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(Result.Success(UserWith(Roles.Client, Roles.Host)));
-        SetupTokenPair();
 
-        var result = await CreateSut().EnablePersonaAsync(userId, Roles.Host);
+        _refreshTokens
+            .Setup(service => service.ValidateAsync("token", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(userId);
+        _identity
+            .Setup(identity => identity.GetUserByIdAsync(userId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(UserErrors.NotFound);
+
+        var result = await _sut.RefreshAsync("token");
+
+        result.IsFailure.ShouldBeTrue();
+        _refreshTokens.Verify(service => service.RevokeAllForUserAsync(userId, It.IsAny<CancellationToken>()), Times.Once);
+        _refreshTokens.Verify(service => service.IssueAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()), Times.Never);
+        _unitOfWork.Verify(unitOfWork => unitOfWork.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task Logout_ShouldRevokeTokenAndSaveChanges()
+    {
+        await _sut.LogoutAsync("token");
+
+        _refreshTokens.Verify(service => service.RevokeAsync("token", It.IsAny<CancellationToken>()), Times.Once);
+        _unitOfWork.Verify(unitOfWork => unitOfWork.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task AddRole_ShouldPassCanonicalRoleName_WhenRoleIsInDifferentCase()
+    {
+        var user = CreateUser(Roles.Client, Roles.Host);
+
+        _identity
+            .Setup(identity => identity.AddToRoleAsync(user.Id, It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(user);
+
+        await _sut.AddRoleAsync(user.Id, new AddRoleRequest("host"));
+
+        _identity.Verify(identity => identity.AddToRoleAsync(user.Id, Roles.Host, It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task AddRole_ShouldIssueAccessTokenWithUpdatedRoles_WhenRoleIsAdded()
+    {
+        var user = CreateUser(Roles.Client, Roles.Host);
+
+        _identity
+            .Setup(identity => identity.AddToRoleAsync(user.Id, Roles.Host, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(user);
+
+        var result = await _sut.AddRoleAsync(user.Id, new AddRoleRequest(Roles.Host));
 
         result.IsSuccess.ShouldBeTrue();
         result.Value.AccessToken.ShouldBe("access-token");
-        _identity.Verify(i => i.AddToRoleAsync(
-            userId, Roles.Host, It.IsAny<CancellationToken>()), Times.Once);
-        _identity.Verify(i => i.SetDefaultPersonaAsync(
-            userId, Roles.Host, It.IsAny<CancellationToken>()), Times.Once);
+        _jwt.Verify(
+            jwt => jwt.GenerateToken(user.Id, user.Email, It.Is<IEnumerable<string>>(r => r.Contains(Roles.Host))),
+            Times.Once);
     }
 
     [Fact]
-    public async Task EnablePersona_admin_is_rejected_before_identity()
+    public async Task AddRole_ShouldNotTouchRefreshTokens_WhenRoleIsAdded()
     {
-        var result = await CreateSut().EnablePersonaAsync(Guid.NewGuid(), Roles.Admin);
+        var user = CreateUser(Roles.Client, Roles.Host);
 
-        result.IsFailure.ShouldBeTrue();
-        _identity.Verify(i => i.AddToRoleAsync(
-            It.IsAny<Guid>(), It.IsAny<string>(),
-            It.IsAny<CancellationToken>()), Times.Never); 
+        _identity
+            .Setup(identity => identity.AddToRoleAsync(user.Id, Roles.Host, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(user);
+
+        await _sut.AddRoleAsync(user.Id, new AddRoleRequest(Roles.Host));
+
+        _refreshTokens.Verify(service => service.IssueAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()), Times.Never);
+        _unitOfWork.Verify(unitOfWork => unitOfWork.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Never);
     }
 
     [Fact]
-    public async Task EnablePersona_when_add_role_fails_does_not_switch()
-    {
-        var userId = Guid.NewGuid();
-        _identity.Setup(i => i.AddToRoleAsync(
-                userId, Roles.Host, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(Result.Failure<UserDto>(new Error("User.NotFound", "not found")));
-
-        var result = await CreateSut().EnablePersonaAsync(userId, Roles.Host);
-
-        result.IsFailure.ShouldBeTrue();
-        _identity.Verify(i => i.SetDefaultPersonaAsync(
-            It.IsAny<Guid>(), It.IsAny<string>(),
-            It.IsAny<CancellationToken>()), Times.Never);
-    }
-
-    [Fact]
-    public async Task SwitchPersona_success_returns_access_token()
+    public async Task AddRole_ShouldReturnErrorWithoutIssuingToken_WhenUserIsNotFound()
     {
         var userId = Guid.NewGuid();
-        _identity.Setup(i => i.SetDefaultPersonaAsync(
-                userId, Roles.Host, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(Result.Success(UserWith( Roles.Client, Roles.Host)));
-        SetupTokenPair();
 
-        var result = await CreateSut().SwitchPersonaAsync(userId, Roles.Host);
+        _identity
+            .Setup(identity => identity.AddToRoleAsync(userId, It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(UserErrors.NotFound);
 
-        result.IsSuccess.ShouldBeTrue();
-        result.Value.AccessToken.ShouldBe("access-token");
-    }
+        var result = await _sut.AddRoleAsync(userId, new AddRoleRequest(Roles.Host));
 
-    [Fact]
-    public async Task SwitchPersona_not_owned_issues_no_token()
-    {
-        var userId = Guid.NewGuid();
-        _identity.Setup(i => i.SetDefaultPersonaAsync(
-                userId, Roles.Host, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(Result.Failure<UserDto>(new Error("Persona.NotOwned", "not owned")));
-
-        var result = await CreateSut().SwitchPersonaAsync(userId, Roles.Host);
-
-        result.IsFailure.ShouldBeTrue();
-        _jwt.Verify(j => j.GenerateToken(It.IsAny<Guid>(), It.IsAny<string>(),
-            It.IsAny<IEnumerable<string>>(), It.IsAny<string>()), Times.Never);
-    }
-
-    [Fact]
-    public async Task Refresh_valid_rotates_old_and_issues_new()
-    {
-        var userId = Guid.NewGuid();
-        _refresh.Setup(r => r.ValidateAsync(
-                "old-token", It.IsAny<CancellationToken>()))
-            .ReturnsAsync(Result.Success(userId));
-        _identity.Setup(i => i.GetActiveUserAsync(
-                userId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(Result.Success(UserWithId(userId, Roles.Client)));
-        SetupTokenPair();
-
-        var result = await CreateSut().RefreshAsync("old-token");
-
-        result.IsSuccess.ShouldBeTrue();
-        _refresh.Verify(r => r.RevokeAsync("old-token", It.IsAny<CancellationToken>()), Times.Once); 
-        _refresh.Verify(r => r.IssueAsync(userId, It.IsAny<CancellationToken>()), Times.Once);    
-    }
-
-    [Fact]
-    public async Task Refresh_invalid_token_issues_no_pair()
-    {
-        _refresh.Setup(r => r.ValidateAsync("reused", It.IsAny<CancellationToken>()))
-            .ReturnsAsync(Result.Failure<Guid>(new Error("Auth.RefreshReused", "token is reused")));
-
-        var result = await CreateSut().RefreshAsync("reused");
-
-        result.IsFailure.ShouldBeTrue();
-        _identity.Verify(i => i.GetActiveUserAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()), Times.Never);
-        _refresh.Verify(r => r.IssueAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()), Times.Never);
-    }
-
-    [Fact]
-    public async Task Refresh_when_user_inactive_revokes_all_sessions()
-    {
-        var userId = Guid.NewGuid();
-        _refresh.Setup(r => r.ValidateAsync("valid", It.IsAny<CancellationToken>()))
-            .ReturnsAsync(Result.Success(userId));
-   
-        _identity.Setup(i => i.GetActiveUserAsync(userId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(Result.Failure<UserDto>(new Error("User.NotFound", "not found")));
-
-        var result = await CreateSut().RefreshAsync("valid");
-
-        result.IsFailure.ShouldBeTrue();
-        _refresh.Verify(r => r.RevokeAllForUserAsync(userId, It.IsAny<CancellationToken>()), Times.Once);
-        _refresh.Verify(r => r.IssueAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()), Times.Never);
+        result.Error.ShouldBe(UserErrors.NotFound);
+        _jwt.Verify(
+            jwt => jwt.GenerateToken(It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<IEnumerable<string>>()),
+            Times.Never);
     }
 }

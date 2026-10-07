@@ -1,14 +1,14 @@
 using BookingWeb.Domain.Models;
 using Shouldly;
 
-namespace BookingWeb.UnitTests.Profiles;
+namespace BookingWeb.UnitTests.Domain;
 
-public class UserProfileTests
+public sealed class UserProfileTests
 {
     private static readonly Guid UserId = Guid.NewGuid();
 
     [Fact]
-    public void Create_valid_profile()
+    public void Create_ShouldSetNamesAndLeaveOptionalFieldsEmpty_WhenArgumentsAreValid()
     {
         var profile = UserProfile.Create(UserId, "Ivan", "Petrenko");
 
@@ -20,7 +20,7 @@ public class UserProfileTests
     }
 
     [Fact]
-    public void Create_trims_names()
+    public void Create_ShouldTrimNames_WhenNamesHaveSurroundingSpaces()
     {
         var profile = UserProfile.Create(UserId, "  Ivan  ", "  Petrenko  ");
 
@@ -28,10 +28,16 @@ public class UserProfileTests
         profile.LastName.ShouldBe("Petrenko");
     }
 
+    [Fact]
+    public void Create_ShouldThrow_WhenUserIdIsEmpty()
+    {
+        Should.Throw<ArgumentException>(() => UserProfile.Create(Guid.Empty, "Ivan", "Petrenko"));
+    }
+
     [Theory]
     [InlineData("")]
     [InlineData("   ")]
-    public void Create_empty_first_name_throws(string firstName)
+    public void Create_ShouldThrow_WhenFirstNameIsBlank(string firstName)
     {
         Should.Throw<ArgumentException>(() => UserProfile.Create(UserId, firstName, "Petrenko"));
     }
@@ -39,19 +45,13 @@ public class UserProfileTests
     [Theory]
     [InlineData("")]
     [InlineData("   ")]
-    public void Create_empty_last_name_throws(string lastName)
+    public void Create_ShouldThrow_WhenLastNameIsBlank(string lastName)
     {
         Should.Throw<ArgumentException>(() => UserProfile.Create(UserId, "Ivan", lastName));
     }
 
     [Fact]
-    public void Create_empty_user_id_throws()
-    {
-        Should.Throw<ArgumentException>(() => UserProfile.Create(Guid.Empty, "Ivan", "Petrenko"));
-    }
-
-    [Fact]
-    public void UpdateName_changes_and_trims()
+    public void UpdateName_ShouldReplaceAndTrimNames_WhenNamesAreValid()
     {
         var profile = UserProfile.Create(UserId, "Ivan", "Petrenko");
 
@@ -62,19 +62,24 @@ public class UserProfileTests
     }
 
     [Fact]
-    public void UpdateName_empty_throws()
+    public void UpdateName_ShouldKeepOldNames_WhenNewFirstNameIsBlank()
     {
         var profile = UserProfile.Create(UserId, "Ivan", "Petrenko");
-        Should.Throw<ArgumentException>(() => profile.UpdateName("", "Petrenko"));
+
+        Should.Throw<ArgumentException>(() => profile.UpdateName("", "Koval"));
+        
+        profile.FirstName.ShouldBe("Ivan");
+        profile.LastName.ShouldBe("Petrenko");
     }
 
     [Theory]
     [InlineData(null)]
     [InlineData("")]
     [InlineData("   ")]
-    public void UpdateBio_blank_becomes_null(string? bio)
+    public void UpdateBio_ShouldSetNull_WhenBioIsBlank(string? bio)
     {
         var profile = UserProfile.Create(UserId, "Ivan", "Petrenko");
+        profile.UpdateBio("Old bio");
 
         profile.UpdateBio(bio);
 
@@ -82,19 +87,20 @@ public class UserProfileTests
     }
 
     [Fact]
-    public void UpdateBio_trims_value()
+    public void UpdateBio_ShouldTrimBio_WhenBioHasSurroundingSpaces()
     {
         var profile = UserProfile.Create(UserId, "Ivan", "Petrenko");
 
-        profile.UpdateBio("  Люблю подорожі  ");
+        profile.UpdateBio("  Loves travelling  ");
 
-        profile.Bio.ShouldBe("Люблю подорожі");
+        profile.Bio.ShouldBe("Loves travelling");
     }
 
     [Fact]
-    public void UpdateAvatar_blank_becomes_null()
+    public void UpdateAvatar_ShouldSetNull_WhenUrlIsBlank()
     {
         var profile = UserProfile.Create(UserId, "Ivan", "Petrenko");
+        profile.UpdateAvatar("https://example.com/a.png");
 
         profile.UpdateAvatar("   ");
 
