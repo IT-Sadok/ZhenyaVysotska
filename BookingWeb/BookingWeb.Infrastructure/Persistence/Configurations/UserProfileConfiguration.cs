@@ -4,7 +4,7 @@ using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
 namespace BookingWeb.Infrastructure.Persistence.Configurations;
 
-public sealed class UserProfileConfiguration:IEntityTypeConfiguration<UserProfile>
+public sealed class UserProfileConfiguration : IEntityTypeConfiguration<UserProfile>
 {
     public void Configure(EntityTypeBuilder<UserProfile> builder)
     {

@@ -11,13 +11,11 @@ namespace BookingWeb.Infrastructure.Authentication;
 
 public class JwtTokenGenerator : IJwtTokenGenerator
 {
-    public const string ActivePersonaClaim = "active_persona";
-    
     private readonly JwtSettings _settings;
 
     public JwtTokenGenerator(IOptions<JwtSettings> settings) => _settings = settings.Value;
 
-    public TokenResult GenerateToken(Guid userId, string email, IEnumerable<string> roles, string activePersona)
+    public TokenResult GenerateToken(Guid userId, string email, IEnumerable<string> roles)
     {
         var expiresAt = DateTime.UtcNow.AddMinutes(_settings.ExpiryMinutes);
 
@@ -25,11 +23,10 @@ public class JwtTokenGenerator : IJwtTokenGenerator
         {
             new(JwtRegisteredClaimNames.Sub, userId.ToString()),
             new(JwtRegisteredClaimNames.Email, email),
-            new(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
-            new(ActivePersonaClaim, activePersona)
+            new(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString())
         };
         
-        claims.AddRange(roles.Select(r => new Claim(ClaimTypes.Role, r)));
+        claims.AddRange(roles.Select(r => new Claim("role", r)));
 
         var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_settings.Secret));
         var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);

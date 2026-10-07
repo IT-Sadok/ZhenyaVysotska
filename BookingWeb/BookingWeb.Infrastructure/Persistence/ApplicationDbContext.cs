@@ -9,7 +9,7 @@ using Microsoft.EntityFrameworkCore;
 namespace BookingWeb.Infrastructure.Persistence;
 
 public class ApplicationDbContext 
-    : IdentityDbContext<ApplicationUser, IdentityRole<Guid>, Guid>, IUnitOfWork
+    : IdentityDbContext<ApplicationUser, IdentityRole<Guid>, Guid>
 {
     public ApplicationDbContext(DbContextOptions<ApplicationDbContext> options)
         : base(options)
@@ -24,10 +24,5 @@ public class ApplicationDbContext
     {
         base.OnModelCreating(builder);
         builder.ApplyConfigurationsFromAssembly(Assembly.GetExecutingAssembly());
-    }
-
-    async Task IUnitOfWork.SaveChangesAsync(CancellationToken cancellationToken)
-    {
-        await base.SaveChangesAsync(cancellationToken);
     }
 }

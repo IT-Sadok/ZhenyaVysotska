@@ -1,25 +1,26 @@
 using BookingWeb.Application.Constants;
 using BookingWeb.Application.Interfaces;
 using BookingWeb.Application.Models;
-using BookingWeb.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 
-namespace BookingWeb.Infrastructure.Identity;
+namespace BookingWeb.Infrastructure.Persistence;
 
-public sealed class UserReadService:IUserReadService
+public sealed class UserRepository : IUserRepository
 {
     private readonly ApplicationDbContext _db;
-    
-    public UserReadService(ApplicationDbContext db)
+
+    public UserRepository(ApplicationDbContext db)
     {
         _db = db;
     }
-    public async Task<PagedResult<UserDto>> GetUsersAsync(UserFilterDto filter, CancellationToken ct)
+
+    public async Task<PagedResult<UserDto>> GetUsersAsync(UserFilterDto filter, CancellationToken ct = default)
     {
         var query = _db.Users.AsNoTracking();
         
         if (!string.IsNullOrWhiteSpace(filter.Role))
         {
+            
             query = query.Where(u => u.Roles.Any(r=> r.Name == filter.Role));
         }
         
@@ -43,8 +44,7 @@ public sealed class UserReadService:IUserReadService
             .Select(u => new UserDto(
                 u.Id,
                 u.Email!,
-                u.Roles.Select(r=> r.Name!).ToList(),
-                u.DefaultPersona
+                u.Roles.Select(r=> r.Name!).ToList()
             )).ToListAsync(ct);
         
         return new PagedResult<UserDto>(items, totalCount, filter.Page, filter.PageSize);

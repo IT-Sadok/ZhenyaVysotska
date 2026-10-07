@@ -16,4 +16,8 @@ public sealed class UserProfileRepository : IUserProfileRepository
     public Task<UserProfile?> GetByUserIdAsync(Guid userId, CancellationToken ct = default)
         => _db.UserProfiles.FirstOrDefaultAsync(p => p.UserId == userId, ct);
 
+    public void Add(UserProfile profile)
+    {
+        _db.UserProfiles.Add(profile);
+    }
 }

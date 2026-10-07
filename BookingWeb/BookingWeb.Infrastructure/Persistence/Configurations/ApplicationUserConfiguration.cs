@@ -5,7 +5,7 @@ using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
 namespace BookingWeb.Infrastructure.Persistence.Configurations;
 
-public sealed class ApplicationUserConfiguration:IEntityTypeConfiguration<ApplicationUser>
+public sealed class ApplicationUserConfiguration : IEntityTypeConfiguration<ApplicationUser>
 {
     public void Configure(EntityTypeBuilder<ApplicationUser> builder)
     {
