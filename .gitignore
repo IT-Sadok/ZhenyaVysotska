@@ -32,3 +32,10 @@ msbuild.wrn
 
 # Visual Studio 2015
 .vs/
+
+# Rider / ReSharper
+**/.idea/
+*.sln.DotSettings.user
+
+# Environment variables
+**/.env
