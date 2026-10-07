@@ -5,25 +5,17 @@ public class UserProfile
     public Guid UserId { get; private set; }
     public string FirstName { get; private set; } = null!;
     public string LastName { get; private set; } = null!;
-    
     public string? Bio { get; private set; }
     public string? AvatarUrl { get; private set; }
     
     private UserProfile() {}
-
-    private UserProfile(Guid userId)
-    {
-        UserId = userId;
-        FirstName = string.Empty;
-        LastName = string.Empty;
-    }
 
     public static UserProfile Create(Guid userId, string firstName, string lastName)
     {
         if (userId == Guid.Empty)
             throw new ArgumentException("userId is required.", nameof(userId));
 
-        var profile = new UserProfile(userId);
+        var profile = new UserProfile {UserId =  userId};
         profile.UpdateName(firstName, lastName);
         return profile;
     }

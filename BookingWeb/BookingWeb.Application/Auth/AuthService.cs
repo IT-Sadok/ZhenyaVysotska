@@ -9,124 +9,101 @@ using FluentValidation;
 
 namespace BookingWeb.Application.Auth;
 
-public sealed class AuthService
+public sealed class AuthService : IAuthService
 {
     private readonly IIdentityService _identity;
     private readonly IJwtTokenGenerator _jwt;
     private readonly IRefreshTokenService _refreshTokens; 
-    private readonly IEnumerable<IValidator<RegisterRequest>> _registerValidators;
-    private readonly IEnumerable<IValidator<LoginRequest>> _loginValidators;
+    private readonly IUnitOfWork _unitOfWork;
 
     public AuthService(
         IIdentityService identity, IJwtTokenGenerator jwt,
-        IRefreshTokenService refreshTokens,
-        IEnumerable<IValidator<RegisterRequest>> registerValidators,
-        IEnumerable<IValidator<LoginRequest>> loginValidators)
+        IRefreshTokenService refreshTokens, IUnitOfWork unitOfWork)
     {
        _identity = identity;
        _jwt = jwt;
        _refreshTokens = refreshTokens;
-       _registerValidators = registerValidators;
-       _loginValidators = loginValidators;
+       _unitOfWork = unitOfWork;
     }
 
     public async Task<Result<AuthResponse>> RegisterAsync(
-        RegisterRequest request, CancellationToken token = default)
+        RegisterRequest request, CancellationToken ct = default)
     {
-        var validationError = await _registerValidators.ValidateAllAsync(request, token);
-        if(validationError is not null)
-            return Result.Failure<AuthResponse>(validationError);
+        var result = await _identity.RegisterAsync(
+            request.Email, request.Password, request.FirstName, request.LastName, request.Role, ct);
+
+        if (result.IsFailure)
+        {
+            return result.Error;
+        }
         
-        var result = await _identity.RegisterAsync(request.Email, request.Password,  request.FirstName,
-            request.LastName, request.Role, token);
-        
-        return result.IsFailure 
-            ? Result.Failure<AuthResponse>(result.Error) 
-            : await BuildAuthResponseAsync(result.Value, ResolveActivePersona(result.Value), token);
+        return await BuildAuthResponseAsync(result.Value, ct);
     }
     
     public async Task<Result<AuthResponse>> LoginAsync(
-        LoginRequest request, CancellationToken token = default)
+        LoginRequest request, CancellationToken ct = default)
     {
-        var validationError = await _loginValidators.ValidateAllAsync(request, token);
-        if(validationError is not null)
-            return Result.Failure<AuthResponse>(validationError);
-        
-        var result = await _identity.ValidateCredentialsAsync(
-            request.Email, request.Password, token);
+        var result = await _identity.ValidateCredentialsAsync(request.Email, request.Password, ct);
 
-        return result.IsFailure
-            ? Result.Failure<AuthResponse>(result.Error)
-            : await BuildAuthResponseAsync(result.Value, ResolveActivePersona(result.Value), token);
+        if (result.IsFailure)
+        {
+            return result.Error;
+        }
+        
+        return await BuildAuthResponseAsync(result.Value, ct);
     }
     
-    public async Task<Result<AuthResponse>> RefreshAsync(string refreshToken, CancellationToken ct = default)
+    public async Task<Result<AuthResponse>> RefreshAsync(
+        string refreshToken, CancellationToken ct = default)
     {
-        var validation = await _refreshTokens.ValidateAsync(refreshToken, ct);
-        if (validation.IsFailure)
-            return Result.Failure<AuthResponse>(validation.Error);
+        var tokenValidation = await _refreshTokens.ValidateAsync(refreshToken, ct);
+        if (tokenValidation.IsFailure)
+            return tokenValidation.Error;
 
-        var userResult = await _identity.GetActiveUserAsync(validation.Value, ct);
+        var userId = tokenValidation.Value;
+
+        var userResult = await _identity.GetUserByIdAsync(userId, ct);
         if (userResult.IsFailure)
         {
-            await _refreshTokens.RevokeAllForUserAsync(validation.Value, ct); 
-            return Result.Failure<AuthResponse>(userResult.Error);
+            await _refreshTokens.RevokeAllForUserAsync(userId, ct); 
+            return userResult.Error;
         }
 
         await _refreshTokens.RevokeAsync(refreshToken, ct); 
-        return await BuildAuthResponseAsync(userResult.Value, ResolveActivePersona(userResult.Value), ct);
+        return await BuildAuthResponseAsync(userResult.Value, ct);
+    }
+
+    public async Task LogoutAsync(string refreshToken, CancellationToken ct = default)
+    {
+        await _refreshTokens.RevokeAsync(refreshToken, ct);
+        await _unitOfWork.SaveChangesAsync(ct);
+    }
+
+    public async Task<Result<AccessTokenResponse>> AddRoleAsync(
+        Guid userId, AddRoleRequest request, CancellationToken ct = default)
+    {
+        var roleName = Roles.GetExactRoleName(request.Role) ?? request.Role;;
+ 
+        var userResult = await _identity.AddToRoleAsync(userId, roleName, ct);
+        if (userResult.IsFailure)
+        {
+            return userResult.Error;
+        }
+ 
+        var user = userResult.Value;
+        
+        var accessToken = _jwt.GenerateToken(user.Id, user.Email, user.Roles);
+
+        return new AccessTokenResponse(accessToken.AccessToken, accessToken.ExpiresAtUtc);
     }
     
-    public async Task<Result<AccessTokenResponse>> EnablePersonaAsync(
-        Guid userId, string persona, CancellationToken ct = default)
+    private async Task<Result<AuthResponse>> BuildAuthResponseAsync(UserDto user, CancellationToken ct = default)
     {
-        if (!Personas.IsSwitchable(persona))
-            return Result.Failure<AccessTokenResponse>(
-                new Error("Persona.Invalid", $"'{persona}' can't be switchable."));
+        var access = _jwt.GenerateToken(user.Id, user.Email, user.Roles);
+        var refresh = await _refreshTokens.IssueAsync(user.Id, ct);
 
-        var added = await _identity.AddToRoleAsync(userId, persona, ct);
-        if (added.IsFailure)
-            return Result.Failure<AccessTokenResponse>(added.Error);
+        await _unitOfWork.SaveChangesAsync(ct);
 
-        var setDefault = await _identity.SetDefaultPersonaAsync(userId, persona, ct);
-        return setDefault.IsFailure
-            ? Result.Failure<AccessTokenResponse>(setDefault.Error)
-            : BuildAccessToken(setDefault.Value, persona);
-    }
-    
-    public async Task<Result<AccessTokenResponse>> SwitchPersonaAsync(
-        Guid userId, string persona, CancellationToken ct = default)
-    {
-        var result = await _identity.SetDefaultPersonaAsync(userId, persona, ct);
-        return result.IsFailure
-            ? Result.Failure<AccessTokenResponse>(result.Error)
-            : BuildAccessToken(result.Value, persona);
-    }
-
-    private async Task<Result<AuthResponse>> BuildAuthResponseAsync(
-        UserDto user, string activePersona, CancellationToken token = default)
-    {
-        var access = _jwt.GenerateToken(user.Id, user.Email, user.Roles, activePersona);
-        var refresh = await _refreshTokens.IssueAsync(user.Id, token);
-        return Result.Success(new AuthResponse(access.AccessToken, access.ExpiresAtUtc, 
-            refresh.Token, refresh.ExpiresAtUtc));
-    }
-
-    private Result<AccessTokenResponse> BuildAccessToken(UserDto user, string activePersona)
-    {
-        var access = _jwt.GenerateToken(user.Id, user.Email, user.Roles, activePersona);
-        return Result.Success(new AccessTokenResponse(access.AccessToken, access.ExpiresAtUtc));
-    }
-
-    private static string ResolveActivePersona(UserDto user)
-    {
-        if (user.DefaultPersona is not null
-            && Personas.IsSwitchable(user.DefaultPersona)
-            && user.Roles.Contains(user.DefaultPersona))
-            return user.DefaultPersona;
-
-        if (user.Roles.Contains(Roles.Host)) return Roles.Host;
-        if (user.Roles.Contains(Roles.Client)) return Roles.Client;
-        return user.Roles.FirstOrDefault() ?? Roles.Client; 
+        return new AuthResponse(access.AccessToken, access.ExpiresAtUtc, refresh.Token, refresh.ExpiresAtUtc);
     }
 }

@@ -10,7 +10,7 @@ public sealed class UserFilterDtoValidator : AbstractValidator<UserFilterDto>
     public UserFilterDtoValidator()
     {
         RuleFor(x => x.Role)
-            .Must(role => Roles.All.Contains(role))
+            .Must(IsRole)
             .When(x => !string.IsNullOrWhiteSpace(x.Role))   
             .WithMessage($"The role should be one of: {string.Join(", ", Roles.All)}.");
 
@@ -24,5 +24,11 @@ public sealed class UserFilterDtoValidator : AbstractValidator<UserFilterDto>
         RuleFor(x => x.PageSize)
             .GreaterThanOrEqualTo(1)
             .LessThanOrEqualTo(100); 
+    }
+
+    private static bool IsRole(string? roleName)
+    {
+        var exactRoleName = Roles.GetExactRoleName(roleName);
+        return exactRoleName is not null;
     }
 }

@@ -5,7 +5,6 @@ namespace BookingWeb.Application.Interfaces;
 
 public interface IIdentityService
 {
-    
     Task<Result<UserDto>> RegisterAsync(
         string email, string password, string firstName, string lastName,string role, 
         CancellationToken token = default);
@@ -15,7 +14,8 @@ public interface IIdentityService
     
     Task<Result<UserDto>> AddToRoleAsync(Guid userId, string role, CancellationToken token = default);
 
-    Task<Result<UserDto>> SetDefaultPersonaAsync(Guid userId, string persona, CancellationToken token = default);
+    Task<Result<UserDto>> GetUserByIdAsync(Guid userId, CancellationToken ct = default);
+    
+    Task<PagedResult<UserDto>> GetUsersAsync(UserFilterDto filter, CancellationToken ct = default);
 
-    Task<Result<UserDto>> GetActiveUserAsync(Guid userId, CancellationToken token = default);
 }

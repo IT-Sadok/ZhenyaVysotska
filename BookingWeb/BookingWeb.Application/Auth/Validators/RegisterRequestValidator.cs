@@ -32,8 +32,14 @@ public sealed class RegisterRequestValidator : AbstractValidator<RegisterRequest
             .WithMessage("Lastname must not exceed 128 characters.");
         
         RuleFor(x => x.Role)
-            .NotEmpty().WithMessage("Role is required.")
-            .Must(Personas.IsSwitchable)
+            .NotEmpty()
+            .WithMessage("Role is required.")
+            .Must(BeSelfAssignableRole)
             .WithMessage($"Role can only be {Roles.Host} or {Roles.Client}.");
+    }
+    private static bool BeSelfAssignableRole(string role)
+    {
+        var exactRoleName = Roles.GetExactRoleName(role);
+        return exactRoleName is not null && Roles.SelfAssignable.Contains(exactRoleName);
     }
 }

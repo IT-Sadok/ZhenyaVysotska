@@ -2,28 +2,25 @@ using BookingWeb.Application.Auth.Responses;
 using BookingWeb.Application.Interfaces;
 using BookingWeb.Application.Models;
 using BookingWeb.Application.Results;
+using BookingWeb.Domain;
 using FluentValidation;
 
 namespace BookingWeb.Application.Admin;
 
-public sealed class AdminService
+public sealed class AdminService : IAdminService
 {
-    private readonly IUserReadService _userReadService;
-    private readonly IEnumerable<IValidator<UserFilterDto>> _userFilterValidators;
+    private readonly IIdentityService _identityService;
 
-    public AdminService(IUserReadService userReadService, IEnumerable<IValidator<UserFilterDto>> userFilterValidators)
+    public AdminService(IIdentityService identityService)
     {
-        _userReadService = userReadService;
-        _userFilterValidators = userFilterValidators;
-    } 
-    
+        _identityService = identityService;
+    }
+
+
     public async Task<Result<PagedResult<UserDto>>> GetUsersAsync(UserFilterDto filter, CancellationToken ct)
-    { 
-        var validationError = await _userFilterValidators.ValidateAllAsync(filter, ct);
-        if(validationError is not null)
-            return Result.Failure<PagedResult<UserDto>>(validationError);
+    {
+        var normalizedFilter = filter with { Role = Roles.GetExactRoleName(filter.Role) };
         
-        var page = await _userReadService.GetUsersAsync(filter, ct);
-        return Result.Success(page);
+        return await _identityService.GetUsersAsync(normalizedFilter, ct);
     }
 }

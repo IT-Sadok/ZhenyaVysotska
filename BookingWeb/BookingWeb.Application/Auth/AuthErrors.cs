@@ -5,8 +5,8 @@ namespace BookingWeb.Application.Auth;
 public static class AuthErrors
 {
     public static readonly Error EmailAlreadyUsed =
-        new("Auth.EmailAlreadyUsed", "User with this email already exists");
+        new("Auth.EmailAlreadyUsed", "User with this email already exists", ErrorType.Conflict);
     
     public static readonly Error InvalidCredentials =
-        new("Auth.InvalidCredentials", "Invalid email or password");
+        new("Auth.InvalidCredentials", "Invalid email or password", ErrorType.Unauthorized);
 }
