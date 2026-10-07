@@ -8,22 +8,20 @@ namespace BookingWeb.Api.Endpoints;
 
 public static class AdminEndpoints
 {
-    public static IEndpointRouteBuilder MapAdminEndpoints(this IEndpointRouteBuilder app)
+    public static IEndpointRouteBuilder MapAdminEndpoints(this IEndpointRouteBuilder routes)
     {
-        var group = app.MapGroup("/api/admin")
+        var group = routes.MapGroup("admin")
             .WithTags("Admin")
             .RequireAuthorization(PolicyNames.AdminOnly);
 
         group.MapGet("/users", async (
-            [AsParameters] UserFilterDto filter, AdminService service, CancellationToken ct = default) =>
+            [AsParameters] UserFilterDto filter, IAdminService service, CancellationToken ct = default) =>
         {
             var result = await service.GetUsersAsync(filter, ct);
 
-            return result.IsFailure 
-                ? result.ToProblem()
-                : Results.Ok(result.Value);
+            return result.Match(Results.Ok);
         });
         
-        return app;
+        return routes;
     }
 }

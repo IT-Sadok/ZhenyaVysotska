@@ -2,83 +2,69 @@ using BookingWeb.Api.Extensions;
 using BookingWeb.Application.Auth;
 using BookingWeb.Application.Auth.Requests;
 using BookingWeb.Application.Interfaces;
+using BookingWeb.Domain;
 
 namespace BookingWeb.Api.Endpoints;
 
 public static class AuthEndpoints
 {
-    public static IEndpointRouteBuilder MapAuthEndpoints(this IEndpointRouteBuilder app)
+    public static IEndpointRouteBuilder MapAuthEndpoints(this IEndpointRouteBuilder routes)
     {
-        var group = app.MapGroup("/auth").WithTags("Auth");
+        var group = routes.MapGroup("/auth")
+            .WithTags("Auth");
 
         group.MapPost("/register", async (
-            RegisterRequest request, AuthService auth, CancellationToken ct) =>
+            RegisterRequest request, IAuthService auth, CancellationToken ct) =>
         {
             var result = await auth.RegisterAsync(request, ct);
-            return result.IsSuccess 
-                ? Results.Ok(result.Value) 
-                : result.ToProblem();
+            return result.Match(Results.Ok);
         });
 
         group.MapPost("/login", async (
-            LoginRequest request, AuthService auth, CancellationToken ct) =>
+            LoginRequest request, IAuthService auth, CancellationToken ct) =>
         {
             var result = await auth.LoginAsync(request, ct);
-            return result.IsSuccess 
-                ? Results.Ok(result.Value) 
-                : result.ToProblem();
+            return result.Match(Results.Ok);
         });
         
         group.MapPost("/refresh", async (
-            RefreshRequest request, AuthService auth, CancellationToken ct) =>
+            RefreshRequest request, IAuthService auth, CancellationToken ct) =>
         {
             var result = await auth.RefreshAsync(request.RefreshToken, ct);
-            return result.IsSuccess 
-                ? Results.Ok(result.Value) 
-                : result.ToProblem();
+            return result.Match(Results.Ok);
         });
 
         group.MapPost("/logout", async (
-            RefreshRequest request, IRefreshTokenService refreshTokens, CancellationToken ct) =>
+            RefreshRequest request, IAuthService auth, CancellationToken ct) =>
         {
-            await refreshTokens.RevokeAsync(request.RefreshToken, ct);
+            await auth.LogoutAsync(request.RefreshToken, ct);
             return Results.NoContent();
-        }).RequireAuthorization();
+        })
+            .RequireAuthorization();
 
-        group.MapPost("/enable-persona", async (
-            EnablePersonaRequest request, HttpContext http, AuthService auth, CancellationToken ct) =>
+        group.MapPut("/me/roles/{role}", async (
+                [AsParameters] AddRoleRequest request, HttpContext context, 
+                IAuthService auth, CancellationToken ct) =>
         {
-            var userId = http.User.GetUserId();
+            var userId = context.User.GetUserId();
             if (userId is null) return Results.Unauthorized();
-
-            var result = await auth.EnablePersonaAsync(userId.Value, request.Persona, ct);
-            return result.IsSuccess 
-                ? Results.Ok(result.Value) 
-                : result.ToProblem();
-        }).RequireAuthorization();
-
-        group.MapPost("/switch-persona", async (
-            SwitchPersonaRequest request, HttpContext http, AuthService auth, CancellationToken ct) =>
-        {
-            var userId = http.User.GetUserId();
-            if (userId is null) return Results.Unauthorized();
-
-            var result = await auth.SwitchPersonaAsync(userId.Value, request.Persona, ct);
-            return result.IsSuccess 
-                ? Results.Ok(result.Value) 
-                : result.ToProblem();
-        }).RequireAuthorization();
+            
+            var result = await auth.AddRoleAsync(userId.Value, request, ct);
+            return result.Match(Results.Ok);
+        })
+            .RequireAuthorization();
 
         group.MapGet("/me", async (
-            HttpContext http, IIdentityService identity, CancellationToken ct) =>
+            HttpContext context, IIdentityService identity, CancellationToken ct) =>
         {
-            var userId = http.User.GetUserId();
+            var userId = context.User.GetUserId();
             if (userId is null) return Results.Unauthorized();
 
-            var result = await identity.GetActiveUserAsync(userId.Value, ct);
-            return result.IsSuccess ? Results.Ok(result.Value) : result.ToProblem();
-        }).RequireAuthorization();
+            var result = await identity.GetUserByIdAsync(userId.Value, ct);
+            return result.Match(Results.Ok);
+        })
+            .RequireAuthorization();
 
-        return app;
+        return routes;
     }
 }

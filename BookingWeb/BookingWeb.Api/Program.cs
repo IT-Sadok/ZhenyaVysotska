@@ -1,9 +1,12 @@
 using BookingWeb.Api;
 using BookingWeb.Api.Endpoints;
+using BookingWeb.Api.OpenApi;
+using BookingWeb.Api.Validation;
 using BookingWeb.Application;
 using BookingWeb.Infrastructure;
 using BookingWeb.Infrastructure.Persistence;
-using Microsoft.OpenApi.Models;
+using Microsoft.OpenApi;
+using Scalar.AspNetCore;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -14,19 +17,11 @@ builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
 builder.Services.AddProblemDetails();
 
 builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen(options =>
+
+builder.Services.AddOpenApi(options =>
 {
-    var scheme = new OpenApiSecurityScheme
-    {
-        Name = "Authorization",
-        Type = SecuritySchemeType.Http,
-        Scheme = "bearer",
-        BearerFormat = "JWT",
-        In = ParameterLocation.Header,
-        Reference = new OpenApiReference { Type = ReferenceType.SecurityScheme, Id = "Bearer" }
-    };
-    options.AddSecurityDefinition("Bearer", scheme);
-    options.AddSecurityRequirement(new OpenApiSecurityRequirement { [scheme] = Array.Empty<string>() });
+    options.AddDocumentTransformer<BearerSecuritySchemeTransformer>();
+    options.AddOperationTransformer<BearerSecurityOperationTransformer>();
 });
 
 var app = builder.Build();
@@ -40,16 +35,19 @@ app.UseExceptionHandler();
 
 if (app.Environment.IsDevelopment())
 {
-    app.UseSwagger();
-    app.UseSwaggerUI();
+    app.MapOpenApi();
+    app.MapScalarApiReference(options => options
+        .AddPreferredSecuritySchemes("Bearer"));
 }
 
 app.UseAuthentication();
 app.UseAuthorization();
 
-app.MapAuthEndpoints();
-app.MapProfileEndpoints();
-app.MapAdminEndpoints();
+app.MapGroup("/api")
+    .WithValidation()
+    .MapAuthEndpoints()
+    .MapProfileEndpoints()
+    .MapAdminEndpoints();
 
 app.Run();
 
