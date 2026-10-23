@@ -1,9 +1,8 @@
-using BookingWeb.Application.Auth.Responses;
+using BookingWeb.Application.Auth;
 using BookingWeb.Application.Interfaces;
 using BookingWeb.Application.Models;
 using BookingWeb.Application.Results;
 using BookingWeb.Domain;
-using FluentValidation;
 
 namespace BookingWeb.Application.Admin;
 
@@ -15,8 +14,7 @@ public sealed class AdminService : IAdminService
     {
         _identityService = identityService;
     }
-
-
+    
     public async Task<Result<PagedResult<UserDto>>> GetUsersAsync(UserFilterDto filter, CancellationToken ct)
     {
         var normalizedFilter = filter with { Role = Roles.GetExactRoleName(filter.Role) };

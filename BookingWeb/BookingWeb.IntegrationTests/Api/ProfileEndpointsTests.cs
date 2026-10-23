@@ -1,6 +1,6 @@
 using System.Net;
 using System.Net.Http.Json;
-using BookingWeb.Application.Models;
+using BookingWeb.Application.Profiles;
 using BookingWeb.Application.Profiles.Requests;
 using BookingWeb.IntegrationTests.Infrastructure;
 using Shouldly;
