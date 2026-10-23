@@ -12,6 +12,16 @@ public static class ResultExtensions
         
         return onSuccess(result.Value);
     }
+    
+    public static IResult Match(this Result result, Func<IResult> onSuccess)
+    {
+        if (result.IsFailure)
+        {
+            return result.ToProblem();
+        }
+
+        return onSuccess();
+    }
 
     private static IResult ToProblem(this Result result)
     {
@@ -23,6 +33,7 @@ public static class ResultExtensions
             { Type: ErrorType.NotFound } => Problem(result.Error, StatusCodes.Status404NotFound),
             { Type: ErrorType.Conflict } => Problem(result.Error, StatusCodes.Status409Conflict),
             { Type: ErrorType.Unauthorized } => Problem(result.Error, StatusCodes.Status401Unauthorized),
+            { Type: ErrorType.Forbidden } => Problem(result.Error, StatusCodes.Status403Forbidden),
             _ => Problem(result.Error, StatusCodes.Status400BadRequest)
         };
     }
