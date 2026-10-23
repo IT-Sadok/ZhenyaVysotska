@@ -47,7 +47,8 @@ app.MapGroup("/api")
     .WithValidation()
     .MapAuthEndpoints()
     .MapProfileEndpoints()
-    .MapAdminEndpoints();
+    .MapAdminEndpoints()
+    .MapListingEndpoints();
 
 app.Run();
 
