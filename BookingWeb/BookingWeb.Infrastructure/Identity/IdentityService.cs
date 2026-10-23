@@ -1,10 +1,9 @@
+using BookingWeb.Application.Admin;
 using BookingWeb.Application.Auth;
 using BookingWeb.Application.Interfaces;
 using BookingWeb.Application.Models;
 using BookingWeb.Application.Results;
-using BookingWeb.Domain;
 using BookingWeb.Domain.Models;
-using BookingWeb.Infrastructure.Persistence;
 using Microsoft.AspNetCore.Identity;
 
 namespace BookingWeb.Infrastructure.Identity;
@@ -112,7 +111,7 @@ public sealed class IdentityService : IIdentityService
     {
         return _users.GetUsersAsync(filter, ct);
     }
-
+    
     private async Task<UserDto> ToUserDtoAsync(ApplicationUser user)
     {
         var roles = await _userManager.GetRolesAsync(user);

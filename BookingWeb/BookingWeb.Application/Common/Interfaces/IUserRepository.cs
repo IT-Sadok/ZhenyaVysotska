@@ -1,3 +1,5 @@
+using BookingWeb.Application.Admin;
+using BookingWeb.Application.Auth;
 using BookingWeb.Application.Models;
 
 namespace BookingWeb.Application.Interfaces;

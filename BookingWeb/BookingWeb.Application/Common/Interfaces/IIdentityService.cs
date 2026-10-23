@@ -1,3 +1,5 @@
+using BookingWeb.Application.Admin;
+using BookingWeb.Application.Auth;
 using BookingWeb.Application.Models;
 using BookingWeb.Application.Results;
 
@@ -17,5 +19,4 @@ public interface IIdentityService
     Task<Result<UserDto>> GetUserByIdAsync(Guid userId, CancellationToken ct = default);
     
     Task<PagedResult<UserDto>> GetUsersAsync(UserFilterDto filter, CancellationToken ct = default);
-
 }

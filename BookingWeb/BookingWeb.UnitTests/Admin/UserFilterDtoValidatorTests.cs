@@ -1,4 +1,4 @@
-using BookingWeb.Application.Admin.Validators;
+using BookingWeb.Application.Admin;
 using BookingWeb.Application.Constants;
 using BookingWeb.Application.Models;
 using BookingWeb.Domain;

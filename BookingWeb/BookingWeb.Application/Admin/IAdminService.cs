@@ -1,3 +1,4 @@
+using BookingWeb.Application.Auth;
 using BookingWeb.Application.Models;
 using BookingWeb.Application.Results;
 

@@ -14,21 +14,10 @@ public sealed class RefreshToken
     public static RefreshToken Create(
         Guid userId, string tokenHash, DateTimeOffset createdAtUtc, DateTimeOffset expiresAtUtc)
     {
-        if (userId == Guid.Empty)
-        {
-            throw new ArgumentException("UserId is required.", nameof(userId));
-        }
-
-        if (string.IsNullOrWhiteSpace(tokenHash))
-        {
-            throw new ArgumentException("TokenHash is required.", nameof(tokenHash));
-        }
-
-        if (expiresAtUtc <= createdAtUtc)
-        {
-            throw new ArgumentException("Expiration must be after creation.", nameof(expiresAtUtc));
-        }
-
+        Guard.ThrowIfEmpty(userId);
+        ArgumentException.ThrowIfNullOrWhiteSpace(tokenHash);
+        ArgumentOutOfRangeException.ThrowIfLessThanOrEqual(expiresAtUtc, createdAtUtc);
+        
         return new RefreshToken
         {
             Id = Guid.NewGuid(),

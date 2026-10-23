@@ -1,5 +1,6 @@
 using System.Net;
 using System.Net.Http.Json;
+using BookingWeb.Application.Auth;
 using BookingWeb.Application.Models;
 using BookingWeb.Domain;
 using BookingWeb.IntegrationTests.Infrastructure;

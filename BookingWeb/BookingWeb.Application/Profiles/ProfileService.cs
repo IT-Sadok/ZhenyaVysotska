@@ -1,8 +1,6 @@
 using BookingWeb.Application.Interfaces;
-using BookingWeb.Application.Models;
 using BookingWeb.Application.Profiles.Requests;
 using BookingWeb.Application.Results;
-using FluentValidation;
 
 namespace BookingWeb.Application.Profiles;
 

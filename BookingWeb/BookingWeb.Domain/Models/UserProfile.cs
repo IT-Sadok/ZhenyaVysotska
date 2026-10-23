@@ -12,9 +12,7 @@ public class UserProfile
 
     public static UserProfile Create(Guid userId, string firstName, string lastName)
     {
-        if (userId == Guid.Empty)
-            throw new ArgumentException("userId is required.", nameof(userId));
-
+        Guard.ThrowIfEmpty(userId);
         var profile = new UserProfile {UserId =  userId};
         profile.UpdateName(firstName, lastName);
         return profile;
@@ -22,10 +20,8 @@ public class UserProfile
 
     public void UpdateName(string firstName, string lastName)
     {
-        if (string.IsNullOrWhiteSpace(firstName))
-            throw new ArgumentException("firstName can't be empty.", nameof(firstName));
-        if (string.IsNullOrWhiteSpace(lastName))
-            throw new ArgumentException("lastName can't be empty.", nameof(lastName));
+        ArgumentException.ThrowIfNullOrWhiteSpace(firstName);
+        ArgumentException.ThrowIfNullOrWhiteSpace(lastName);
         
         FirstName = firstName.Trim();
         LastName = lastName.Trim();
