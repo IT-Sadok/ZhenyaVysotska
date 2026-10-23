@@ -2,7 +2,7 @@ using BookingWeb.Application.Interfaces;
 using BookingWeb.Domain.Models;
 using Microsoft.EntityFrameworkCore;
 
-namespace BookingWeb.Infrastructure.Persistence;
+namespace BookingWeb.Infrastructure.Persistence.Repositories;
 
 public sealed class RefreshTokenRepository : IRefreshTokenRepository
 {
