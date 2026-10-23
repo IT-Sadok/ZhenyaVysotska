@@ -2,6 +2,7 @@ using System.Reflection;
 using BookingWeb.Application.Admin;
 using BookingWeb.Application.Auth;
 using BookingWeb.Application.Interfaces;
+using BookingWeb.Application.Listings;
 using BookingWeb.Application.Profiles;
 using FluentValidation;
 using Microsoft.Extensions.DependencyInjection;
@@ -18,6 +19,7 @@ public static class ApplicationServiceCollectionExtensions
         services.AddScoped<IAdminService, AdminService>();
         services.AddScoped<IProfileService, ProfileService>();
         services.AddScoped<IRefreshTokenService, RefreshTokenService>(); 
+        services.AddScoped<IListingService, ListingService>();
         
         services.TryAddSingleton(TimeProvider.System);
         return services;
