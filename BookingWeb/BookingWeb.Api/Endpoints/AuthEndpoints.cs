@@ -1,7 +1,7 @@
 using BookingWeb.Api.Extensions;
 using BookingWeb.Application.Auth;
 using BookingWeb.Application.Auth.Requests;
-using BookingWeb.Application.Interfaces;
+using BookingWeb.Application.Common.Interfaces;
 using BookingWeb.Domain;
 
 namespace BookingWeb.Api.Endpoints;

@@ -1,6 +1,6 @@
 using BookingWeb.Application.Results;
 
-namespace BookingWeb.Application.Interfaces;
+namespace BookingWeb.Application.Common.Interfaces;
 
 public interface IRefreshTokenService
 {

@@ -1,6 +1,6 @@
 using System.Security.Cryptography;
+using BookingWeb.Application.Common.Interfaces;
 using BookingWeb.Application.Common.Settings;
-using BookingWeb.Application.Interfaces;
 using BookingWeb.Application.Results;
 using BookingWeb.Domain.Models;
 using Microsoft.Extensions.Options;
