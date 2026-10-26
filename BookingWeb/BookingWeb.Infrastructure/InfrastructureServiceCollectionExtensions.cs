@@ -1,8 +1,8 @@
 using System.Security.Claims;
 using System.Text;
+using BookingWeb.Application.Common.Interfaces;
 using BookingWeb.Application.Common.Settings;
 using BookingWeb.Application.Constants;
-using BookingWeb.Application.Interfaces;
 using BookingWeb.Domain;
 using BookingWeb.Infrastructure.Authentication;
 using BookingWeb.Infrastructure.Identity;
@@ -44,6 +44,7 @@ public static class InfrastructureServiceCollectionExtensions
         services.AddScoped<IUserRepository, UserRepository>();
         services.AddScoped<IUserProfileRepository, UserProfileRepository>();
         services.AddScoped<IRefreshTokenRepository, RefreshTokenRepository>();
+        services.AddScoped<IBookingRepository, BookingRepository>();
         services.AddScoped<IListingRepository, ListingRepository>();
     }
  
@@ -93,10 +94,11 @@ public static class InfrastructureServiceCollectionExtensions
                     NameClaimType = "sub"
                 };
             });
- 
+
         services.AddAuthorizationBuilder()
             .AddPolicy(PolicyNames.AdminOnly, policy => policy.RequireRole(Roles.Admin))
-            .AddPolicy(PolicyNames.HostOnly, policy => policy.RequireRole(Roles.Host));
+            .AddPolicy(PolicyNames.HostOnly, policy => policy.RequireRole(Roles.Host))
+            .AddPolicy(PolicyNames.ClientOnly, policy => policy.RequireRole(Roles.Client));
     }
 
     private static JwtSettings GetValidatedJwtSettings(IConfiguration configuration)

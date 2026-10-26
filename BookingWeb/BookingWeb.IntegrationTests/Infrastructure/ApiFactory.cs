@@ -52,6 +52,7 @@ public sealed class ApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
         await db.Database.ExecuteSqlRawAsync(
             """
             TRUNCATE TABLE
+                "Bookings",
                 "Listings",
                 "RefreshTokens",
                 "UserProfiles",
