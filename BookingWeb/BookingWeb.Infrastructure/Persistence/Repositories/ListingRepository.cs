@@ -1,4 +1,4 @@
-using BookingWeb.Application.Interfaces;
+using BookingWeb.Application.Common.Interfaces;
 using BookingWeb.Application.Listings;
 using BookingWeb.Application.Listings.Requests;
 using BookingWeb.Application.Models;
@@ -15,6 +15,11 @@ public sealed class ListingRepository : IListingRepository
         _db = db;
     }
     
+    public void Add(Listing listing)
+    {
+        _db.Listings.Add(listing);
+    }
+    
     public Task<Listing?> GetByIdAsync(Guid listingId, CancellationToken ct = default)
     {
         return _db.Listings
@@ -27,16 +32,16 @@ public sealed class ListingRepository : IListingRepository
         return _db.Listings.FirstOrDefaultAsync(l => l.Id == listingId && l.HostId == hostId, ct);
     }
 
-    public async Task<IReadOnlyList<Listing>> GetByHostAsync(Guid hostId, CancellationToken ct = default)
+    public Task<PagedResult<Listing>> GetByHostAsync(Guid hostId, PageRequest request, CancellationToken ct = default)
     {
-        return await _db.Listings
+        return _db.Listings
             .AsNoTracking()
-            .Where(l => l.HostId == hostId)
             .OrderByDescending(l => l.CreatedAtUtc)
-            .ToListAsync(ct);
+            .ThenBy(l => l.Id)
+            .ToPagedResultAsync(request.Page, request.PageSize, ct);
     }
-
-    public async Task<PagedResult<Listing>> SearchAsync(ListingFilterDto filter, CancellationToken ct = default)
+    
+    public Task<PagedResult<Listing>> SearchAsync(ListingFilterDto filter, CancellationToken ct = default)
     {
         var query = _db.Listings
             .AsNoTracking()
@@ -48,26 +53,24 @@ public sealed class ListingRepository : IListingRepository
             query = query.Where(l => l.City.ToLower() == city);
         }
 
-        if (filter.Guests is { } guests)
+        if (filter.Guests is int guests)
         {
             query = query.Where(l => l.MaxGuests >= guests);
         }
-        
-        var totalCount = await query.CountAsync(ct);
-        
-        var items = await  query
-            .OrderByDescending(l => l.CreatedAtUtc)
-            .ThenBy(l => l.Id)
-            .Skip((filter.Page - 1) * filter.PageSize)
-            .Take(filter.PageSize)
-            .ToListAsync(ct);
-        
-        return new PagedResult<Listing>(items, totalCount, filter.Page, filter.PageSize);
-    }
 
-    public void Add(Listing listing)
-    {
-        _db.Listings.Add(listing);
+        if (filter.CheckIn is DateOnly checkIn && filter.CheckOut is DateOnly checkOut)
+        {
+            var bookedListingIds = _db.Bookings
+                .ThatBlock(checkIn, checkOut)
+                .Select(b => b.ListingId);
+            
+            query = query.Where(l => !bookedListingIds.Contains(l.Id));
+        }
+        
+        return query
+            .OrderByDescending(l => l.CreatedAtUtc)
+            .ThenBy(l=>l.Id)
+            .ToPagedResultAsync(filter.Page, filter.PageSize, ct);
     }
 
     public Task DeactivateAllForHostAsync(Guid hostId, CancellationToken ct = default)

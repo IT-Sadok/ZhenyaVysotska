@@ -3,6 +3,7 @@ using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using BookingWeb.Application.Auth.Requests;
 using BookingWeb.Application.Auth.Responses;
+using BookingWeb.Application.Bookings.Requests;
 using BookingWeb.Application.Listings;
 using BookingWeb.Application.Listings.Requests;
 using BookingWeb.Domain;
@@ -79,6 +80,13 @@ public abstract class ApiTestBase : IAsyncLifetime
 
         await response.ShouldHaveStatusAsync(HttpStatusCode.Created);
         return (await response.Content.ReadFromJsonAsync<ListingDto>())!;
+    }
+    
+    protected static Task<HttpResponseMessage> BookAsync(
+        HttpClient clientClient, Guid listingId, DateOnly checkIn, DateOnly checkOut, int guests = 2)
+    {
+        return clientClient.PostAsJsonAsync(
+            "/api/bookings", new CreateBookingRequest(listingId, checkIn, checkOut, guests));
     }
     
     protected HttpClient CreateAuthorizedClient(string accessToken)

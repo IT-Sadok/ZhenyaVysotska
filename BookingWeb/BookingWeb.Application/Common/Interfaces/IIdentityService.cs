@@ -3,7 +3,7 @@ using BookingWeb.Application.Auth;
 using BookingWeb.Application.Models;
 using BookingWeb.Application.Results;
 
-namespace BookingWeb.Application.Interfaces;
+namespace BookingWeb.Application.Common.Interfaces;
 
 public interface IIdentityService
 {

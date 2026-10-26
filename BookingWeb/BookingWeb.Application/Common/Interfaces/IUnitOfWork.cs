@@ -1,4 +1,4 @@
-namespace BookingWeb.Application.Interfaces;
+namespace BookingWeb.Application.Common.Interfaces;
 
 public interface IUnitOfWork
 { 

@@ -1,5 +1,6 @@
 using System.Reflection;
-using BookingWeb.Application.Interfaces;
+using BookingWeb.Application.Common;
+using BookingWeb.Application.Common.Interfaces;
 using BookingWeb.Application.Listings.Requests;
 using BookingWeb.Application.Models;
 using BookingWeb.Application.Results;
@@ -10,21 +11,23 @@ namespace BookingWeb.Application.Listings;
 public sealed class ListingService : IListingService
 {
     private readonly IListingRepository _listingRepository;
+    private readonly IBookingRepository _bookingRepository;
     private readonly IUnitOfWork _unitOfWork;
     private readonly TimeProvider _timeProvider;
 
     public ListingService(
         IListingRepository listingRepository, 
+        IBookingRepository bookingRepository,
         IUnitOfWork unitOfWork,
         TimeProvider timeProvider)
     {
         _listingRepository = listingRepository;
+        _bookingRepository = bookingRepository;
         _unitOfWork = unitOfWork;
         _timeProvider = timeProvider;
     }
     
-    public async Task<Result<ListingDto>> CreateAsync(
-        Guid hostId, ListingRequest request, CancellationToken ct = default)
+    public async Task<Result<ListingDto>> CreateAsync(Guid hostId, ListingRequest request, CancellationToken ct = default)
     {
         var listing = Listing.Create(
             hostId,
@@ -42,11 +45,9 @@ public sealed class ListingService : IListingService
         return listing.ToDto();
     }
 
-    public async Task<Result<ListingDto>> GetByIdAsync(
-        Guid listingId, CancellationToken ct = default)
+    public async Task<Result<ListingDto>> GetByIdAsync(Guid listingId, CancellationToken ct = default)
     {
         var listing = await _listingRepository.GetByIdAsync(listingId, ct);
-
         if (listing is null || !listing.IsActive)
         {
             return ListingErrors.NotFound;
@@ -55,17 +56,15 @@ public sealed class ListingService : IListingService
         return listing.ToDto();
     }
 
-    public async Task<Result<IReadOnlyList<ListingDto>>> GetMineAsync(
-        Guid hostId, CancellationToken ct = default)
+    public async Task<Result<PagedResult<ListingDto>>> GetMineAsync(Guid hostId, PageRequest request, CancellationToken ct = default)
     {
-        var listing = await _listingRepository.GetByHostAsync(hostId, ct);
-        IReadOnlyList<ListingDto> items = listing.Select(l => l.ToDto()).ToList();
-
-        return Result.Success(items);
+        var listingPage = await _listingRepository.GetByHostAsync(hostId, request, ct);
+        var items =  listingPage.Items.Select(l=>l.ToDto()).ToList();
+        
+        return new PagedResult<ListingDto>(items, listingPage.TotalCount, listingPage.Page, listingPage.PageSize);
     }
 
-    public async Task<Result<PagedResult<ListingDto>>> SearchAsync(
-        ListingFilterDto filter, CancellationToken ct = default)
+    public async Task<Result<PagedResult<ListingDto>>> SearchAsync(ListingFilterDto filter, CancellationToken ct = default)
     {
         var page = await _listingRepository.SearchAsync(filter, ct);
         var items = page.Items.Select(l=> l.ToDto()).ToList();
@@ -73,8 +72,7 @@ public sealed class ListingService : IListingService
         return new PagedResult<ListingDto>(items, page.TotalCount, page.Page, page.PageSize);
     }
 
-    public async Task<Result<ListingDto>> UpdateAsync(
-        Guid hostId, Guid listingId, ListingRequest request, CancellationToken ct = default)
+    public async Task<Result<ListingDto>> UpdateAsync(Guid hostId, Guid listingId, ListingRequest request, CancellationToken ct = default)
     {
         var listing = await _listingRepository.GetByIdForHostAsync(listingId, hostId, ct);
         if (listing is null)
@@ -95,13 +93,18 @@ public sealed class ListingService : IListingService
         return listing.ToDto();
     }
 
-    public async Task<Result> DeleteAsync(
-        Guid hostId, Guid listingId, CancellationToken ct = default)
+    public async Task<Result> DeleteAsync(Guid hostId, Guid listingId, CancellationToken ct = default)
     {
         var listing = await _listingRepository.GetByIdForHostAsync(listingId, hostId, ct);
         if (listing is null)
         {
             return ListingErrors.NotFound;
+        }
+
+        var today = _timeProvider.GetUtcToday();
+        if (await _bookingRepository.HasUpcomingForListingAsync(listing.Id, today, ct))
+        {
+            return ListingErrors.HasUpcomingBookings;
         }
         
         listing.Deactivate();

@@ -1,6 +1,6 @@
 using BookingWeb.Domain.Models;
 
-namespace BookingWeb.Application.Interfaces;
+namespace BookingWeb.Application.Common.Interfaces;
 
 public interface IUserProfileRepository
 {

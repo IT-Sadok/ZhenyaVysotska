@@ -1,6 +1,6 @@
 using BookingWeb.Application.Admin;
 using BookingWeb.Application.Auth;
-using BookingWeb.Application.Interfaces;
+using BookingWeb.Application.Common.Interfaces;
 using BookingWeb.Application.Models;
 using BookingWeb.Application.Results;
 using BookingWeb.Domain.Models;

@@ -48,7 +48,8 @@ app.MapGroup("/api")
     .MapAuthEndpoints()
     .MapProfileEndpoints()
     .MapAdminEndpoints()
-    .MapListingEndpoints();
+    .MapListingEndpoints()
+    .MapBookingEndpoints();
 
 app.Run();
 

@@ -1,4 +1,4 @@
-using BookingWeb.Application.Interfaces;
+using BookingWeb.Application.Common.Interfaces;
 using BookingWeb.Application.Listings;
 using BookingWeb.Application.Listings.Requests;
 using BookingWeb.Domain.Models;
@@ -14,12 +14,17 @@ public sealed class ListingServiceTests
     
     private readonly Guid _hostId = Guid.NewGuid();
     private readonly Mock<IListingRepository> _listings = new();
+    private readonly Mock<IBookingRepository> _bookings = new();
     private readonly Mock<IUnitOfWork> _unitOfWork = new();
     private readonly ListingService _sut;
 
     public ListingServiceTests()
     {
-        _sut = new ListingService(_listings.Object, _unitOfWork.Object, new FixedTimeProvider(Now));
+        _sut = new ListingService(
+            _listings.Object,
+            _bookings.Object, 
+            _unitOfWork.Object, 
+            new FixedTimeProvider(Now));
     }
 
     private Listing CreateOwnListing()
@@ -83,6 +88,20 @@ public sealed class ListingServiceTests
         listing.City.ShouldBe("Odesa");
         listing.PricePerNight.ShouldBe(2000m);
         _unitOfWork.Verify(unitOfWork => unitOfWork.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
+    }
+    
+    [Fact]
+    public async Task Delete_ShouldReturnConflictAndKeepActive_WhenListingHasUpcomingBookings()
+    {
+        var listing = CreateOwnListing();
+        _bookings
+            .Setup(repository => repository.HasUpcomingForListingAsync(listing.Id, DateOnly.FromDateTime(Now.UtcDateTime), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(true);
+
+        var result = await _sut.DeleteAsync(_hostId, listing.Id);
+
+        result.Error.ShouldBe(ListingErrors.HasUpcomingBookings);
+        listing.IsActive.ShouldBeTrue();
     }
     
     [Fact]
