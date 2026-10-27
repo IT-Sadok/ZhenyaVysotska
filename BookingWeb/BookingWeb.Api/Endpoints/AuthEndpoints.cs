@@ -1,8 +1,10 @@
 using BookingWeb.Api.Extensions;
+using BookingWeb.Application.Accounts;
 using BookingWeb.Application.Auth;
 using BookingWeb.Application.Auth.Requests;
 using BookingWeb.Application.Common.Interfaces;
 using BookingWeb.Domain;
+using Microsoft.AspNetCore.Mvc;
 
 namespace BookingWeb.Api.Endpoints;
 
@@ -64,7 +66,19 @@ public static class AuthEndpoints
             return result.Match(Results.Ok);
         })
             .RequireAuthorization();
+        
+        group.MapPost("/me/deletion", async (
+                DeleteAccountRequest request, HttpContext context,
+                IAccountService accounts, CancellationToken ct) =>
+            {
+                var userId = context.User.GetUserId();
+                if (userId is null) return Results.Unauthorized();
 
+                var result = await accounts.DeleteAsync(userId.Value, request, ct);
+                return result.Match(Results.NoContent);
+            })
+            .RequireAuthorization();
+        
         return routes;
     }
 }

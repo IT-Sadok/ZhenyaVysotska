@@ -36,6 +36,7 @@ public sealed class ListingRepository : IListingRepository
     {
         return _db.Listings
             .AsNoTracking()
+            .Where(l => l.HostId == hostId)
             .OrderByDescending(l => l.CreatedAtUtc)
             .ThenBy(l => l.Id)
             .ToPagedResultAsync(request.Page, request.PageSize, ct);

@@ -20,4 +20,9 @@ public sealed class UserProfileRepository : IUserProfileRepository
     {
         _db.UserProfiles.Add(profile);
     }
+
+    public void Remove(UserProfile profile)
+    {
+        _db.UserProfiles.Remove(profile);
+    }
 }
