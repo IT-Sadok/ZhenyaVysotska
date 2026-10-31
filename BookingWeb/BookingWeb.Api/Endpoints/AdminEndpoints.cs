@@ -6,9 +6,9 @@ using BookingWeb.Application.Results;
 
 namespace BookingWeb.Api.Endpoints;
 
-public static class AdminEndpoints
+public sealed class AdminEndpoints : IEndpointGroup
 {
-    public static IEndpointRouteBuilder MapAdminEndpoints(this IEndpointRouteBuilder routes)
+    public void MapEndpoints(IEndpointRouteBuilder routes)
     {
         var group = routes.MapGroup("admin")
             .WithTags("Admin")
@@ -21,7 +21,5 @@ public static class AdminEndpoints
 
             return result.Match(Results.Ok);
         });
-        
-        return routes;
     }
 }

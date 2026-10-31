@@ -5,9 +5,9 @@ using BookingWeb.Application.Listings.Requests;
 
 namespace BookingWeb.Api.Endpoints;
 
-public static class ListingEndpoints
+public sealed class ListingEndpoints : IEndpointGroup
 {
-    public static IEndpointRouteBuilder MapListingEndpoints(this IEndpointRouteBuilder routes)
+    public void MapEndpoints(IEndpointRouteBuilder routes)
     {
         var group = routes.MapGroup("/listings")
             .WithTags("Listings");
@@ -20,9 +20,9 @@ public static class ListingEndpoints
         });
         
         group.MapGet("/{id:guid}", async (
-            Guid listingId, IListingService service, CancellationToken ct = default) =>
+            Guid id, IListingService service, CancellationToken ct = default) =>
         {
-            var result = await service.GetByIdAsync(listingId, ct);
+            var result = await service.GetByIdAsync(id, ct);
             return result.Match(Results.Ok);
         });
 
@@ -70,6 +70,5 @@ public static class ListingEndpoints
             })
             .RequireAuthorization(PolicyNames.HostOnly);
         
-        return routes;
     }
 }

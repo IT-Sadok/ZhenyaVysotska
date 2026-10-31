@@ -1,11 +1,10 @@
 using BookingWeb.Api;
-using BookingWeb.Api.Endpoints;
+using BookingWeb.Api.Extensions;
 using BookingWeb.Api.OpenApi;
 using BookingWeb.Api.Validation;
 using BookingWeb.Application;
 using BookingWeb.Infrastructure;
 using BookingWeb.Infrastructure.Persistence;
-using Microsoft.OpenApi;
 using Scalar.AspNetCore;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -16,7 +15,7 @@ builder.Services.AddInfrastructure(builder.Configuration);
 builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
 builder.Services.AddProblemDetails();
 
-builder.Services.AddEndpointsApiExplorer();
+builder.Services.AddEndpointGroups(typeof(Program).Assembly);
 
 builder.Services.AddOpenApi(options =>
 {
@@ -45,10 +44,7 @@ app.UseAuthorization();
 
 app.MapGroup("/api")
     .WithValidation()
-    .MapAuthEndpoints()
-    .MapProfileEndpoints()
-    .MapAdminEndpoints()
-    .MapListingEndpoints();
+    .MapEndpointGroups();
 
 app.Run();
 
