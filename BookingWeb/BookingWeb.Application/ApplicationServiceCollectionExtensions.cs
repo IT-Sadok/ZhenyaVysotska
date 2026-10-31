@@ -1,10 +1,6 @@
 using System.Reflection;
-using BookingWeb.Application.Admin;
-using BookingWeb.Application.Auth;
 using BookingWeb.Application.Common.Mapping;
-using BookingWeb.Application.Interfaces;
 using BookingWeb.Application.Listings;
-using BookingWeb.Application.Profiles;
 using FluentValidation;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
@@ -16,12 +12,13 @@ public static class ApplicationServiceCollectionExtensions
     public static IServiceCollection AddApplication(this IServiceCollection services)
     {
         services.AddValidatorsFromAssembly(Assembly.GetExecutingAssembly());
-        services.AddScoped<IAuthService, AuthService>();
-        services.AddScoped<IAdminService, AdminService>();
-        services.AddScoped<IProfileService, ProfileService>();
-        services.AddScoped<IRefreshTokenService, RefreshTokenService>(); 
-        services.AddScoped<IListingService, ListingService>();
         
+        services.Scan(scan => scan
+            .FromAssemblyOf<ListingService>()
+            .AddClasses(classes => classes.Where(type => type.Name.EndsWith("Service")))
+            .AsMatchingInterface()
+            .WithScopedLifetime());
+
         services.TryAddSingleton(TimeProvider.System);
 
         MappingConfig.RegisterMappings();

@@ -41,10 +41,14 @@ public static class InfrastructureServiceCollectionExtensions
         services.AddDbContext<ApplicationDbContext>(options => options.UseNpgsql(connectionString));
         
         services.AddScoped<IUnitOfWork, UnitOfWork>();
-        services.AddScoped<IUserRepository, UserRepository>();
-        services.AddScoped<IUserProfileRepository, UserProfileRepository>();
-        services.AddScoped<IRefreshTokenRepository, RefreshTokenRepository>();
-        services.AddScoped<IListingRepository, ListingRepository>();
+        
+        services.Scan(scan => scan
+            .FromAssemblyOf<ListingRepository>()
+            .AddClasses(classes => classes
+                .InNamespaceOf<ListingRepository>()
+                .Where(type => type.Name.EndsWith("Repository")))
+            .AsMatchingInterface()
+            .WithScopedLifetime());
     }
  
     private static void AddIdentityServices(this IServiceCollection services)

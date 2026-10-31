@@ -42,6 +42,12 @@ public sealed class ApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
         builder.UseEnvironment("Testing");
+        
+        builder.UseDefaultServiceProvider(options =>
+        {
+            options.ValidateOnBuild = true;
+            options.ValidateScopes = true;
+        });
     }
 
     public async Task ResetDatabaseAsync()
