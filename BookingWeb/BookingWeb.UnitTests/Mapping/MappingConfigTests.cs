@@ -1,7 +1,7 @@
 using BookingWeb.Application.Common.Mapping;
 using BookingWeb.Application.Listings;
 using BookingWeb.Application.Profiles;
-using BookingWeb.Domain.Models;
+using BookingWeb.Domain.Entities;
 using Mapster;
 using Shouldly;
 

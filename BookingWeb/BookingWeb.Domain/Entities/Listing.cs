@@ -1,4 +1,6 @@
-namespace BookingWeb.Domain.Models;
+using Ardalis.GuardClauses;
+
+namespace BookingWeb.Domain.Entities;
 
 public sealed class Listing
 {
@@ -25,7 +27,7 @@ public sealed class Listing
         int maxGuests,
         DateTimeOffset createdAtUtc)
     {
-        Guard.ThrowIfEmpty(hostId);
+        Guard.Against.Default(hostId);
 
         var listing = new Listing
         {
@@ -47,11 +49,11 @@ public sealed class Listing
         decimal pricePerNight,
         int maxGuests)
     {
-        ArgumentException.ThrowIfNullOrWhiteSpace(title);
-        ArgumentException.ThrowIfNullOrWhiteSpace(city);
-        ArgumentException.ThrowIfNullOrWhiteSpace(address);
-        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(pricePerNight);
-        ArgumentOutOfRangeException.ThrowIfLessThan(maxGuests, 1);
+        Guard.Against.NullOrWhiteSpace(title);
+        Guard.Against.NullOrWhiteSpace(city);
+        Guard.Against.NullOrWhiteSpace(address);
+        Guard.Against.NegativeOrZero(pricePerNight);
+        Guard.Against.NegativeOrZero(maxGuests);
         
         Title = title.Trim();
         Description = string.IsNullOrWhiteSpace(description) ? null : description.Trim();

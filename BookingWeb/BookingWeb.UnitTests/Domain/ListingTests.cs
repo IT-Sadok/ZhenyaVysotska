@@ -1,4 +1,4 @@
-using BookingWeb.Domain.Models;
+using BookingWeb.Domain.Entities;
 using Shouldly;
 
 namespace BookingWeb.UnitTests.Domain;
@@ -46,6 +46,24 @@ public sealed class ListingTests
             Listing.Create(Guid.Empty, "Loft", null, "Kyiv", "Khreshchatyk 1", 1500m, 2, CreatedAt));
     }
 
+    [Fact]
+    public void Create_ShouldReportHostIdAsParamName_WhenHostIdIsEmpty()
+    {
+        var exception = Should.Throw<ArgumentException>(() =>
+            Listing.Create(Guid.Empty, "Loft", null, "Kyiv", "Khreshchatyk 1", 1500m, 2, CreatedAt));
+
+        exception.ParamName.ShouldBe("hostId");
+    }
+
+    [Fact]
+    public void Create_ShouldThrowArgumentNull_WhenTitleIsNull()
+    {
+        var exception = Should.Throw<ArgumentNullException>(() =>
+            Listing.Create(HostId, null!, null, "Kyiv", "Khreshchatyk 1", 1500m, 2, CreatedAt));
+
+        exception.ParamName.ShouldBe("title");
+    }
+
     [Theory]
     [InlineData(0)]
     [InlineData(-1)]
@@ -55,11 +73,21 @@ public sealed class ListingTests
             Listing.Create(HostId, "Loft", null, "Kyiv", "Khreshchatyk 1", price, 2, CreatedAt));
     }
 
-    [Fact]
-    public void Create_ShouldThrow_WhenMaxGuestsIsZero()
+    [Theory]
+    [InlineData(0)]
+    [InlineData(-1)]
+    public void Create_ShouldThrow_WhenMaxGuestsIsNotPositive(int maxGuests)
     {
         Should.Throw<ArgumentException>(() =>
-            Listing.Create(HostId, "Loft", null, "Kyiv", "Khreshchatyk 1", 1500m, 0, CreatedAt));
+            Listing.Create(HostId, "Loft", null, "Kyiv", "Khreshchatyk 1", 1500m, maxGuests, CreatedAt));
+    }
+
+    [Fact]
+    public void Create_ShouldSucceed_WhenMaxGuestsIsOne()
+    {
+        var listing = Listing.Create(HostId, "Loft", null, "Kyiv", "Khreshchatyk 1", 1500m, 1, CreatedAt);
+
+        listing.MaxGuests.ShouldBe(1);
     }
 
     [Fact]

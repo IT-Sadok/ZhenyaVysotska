@@ -1,4 +1,4 @@
-using BookingWeb.Domain.Models;
+using BookingWeb.Domain.Entities;
 using Shouldly;
 
 namespace BookingWeb.UnitTests.Domain;
@@ -32,6 +32,24 @@ public sealed class UserProfileTests
     public void Create_ShouldThrow_WhenUserIdIsEmpty()
     {
         Should.Throw<ArgumentException>(() => UserProfile.Create(Guid.Empty, "Ivan", "Petrenko"));
+    }
+
+    [Fact]
+    public void Create_ShouldReportUserIdAsParamName_WhenUserIdIsEmpty()
+    {
+        var exception = Should.Throw<ArgumentException>(() =>
+            UserProfile.Create(Guid.Empty, "Ivan", "Petrenko"));
+
+        exception.ParamName.ShouldBe("userId");
+    }
+
+    [Fact]
+    public void Create_ShouldThrowArgumentNull_WhenFirstNameIsNull()
+    {
+        var exception = Should.Throw<ArgumentNullException>(() =>
+            UserProfile.Create(UserId, null!, "Petrenko"));
+
+        exception.ParamName.ShouldBe("firstName");
     }
 
     [Theory]

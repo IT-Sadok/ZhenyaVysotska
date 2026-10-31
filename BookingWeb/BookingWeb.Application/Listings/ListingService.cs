@@ -2,7 +2,7 @@ using BookingWeb.Application.Interfaces;
 using BookingWeb.Application.Listings.Requests;
 using BookingWeb.Application.Models;
 using BookingWeb.Application.Results;
-using BookingWeb.Domain.Models;
+using BookingWeb.Domain.Entities;
 using Mapster;
 
 namespace BookingWeb.Application.Listings;

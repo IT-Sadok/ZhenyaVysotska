@@ -1,6 +1,6 @@
 using BookingWeb.Application.Listings;
 using BookingWeb.Application.Profiles;
-using BookingWeb.Domain.Models;
+using BookingWeb.Domain.Entities;
 using Mapster;
 
 namespace BookingWeb.Application.Common.Mapping;

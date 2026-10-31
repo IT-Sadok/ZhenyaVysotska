@@ -1,7 +1,7 @@
 using BookingWeb.Application.Auth;
 using BookingWeb.Application.Common.Settings;
 using BookingWeb.Application.Interfaces;
-using BookingWeb.Domain.Models;
+using BookingWeb.Domain.Entities;
 using BookingWeb.UnitTests.TestDoubles;
 using Microsoft.Extensions.Options;
 using Moq;

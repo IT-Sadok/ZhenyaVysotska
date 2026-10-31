@@ -2,7 +2,7 @@ using BookingWeb.Application.Interfaces;
 using BookingWeb.Application.Listings;
 using BookingWeb.Application.Listings.Requests;
 using BookingWeb.Application.Models;
-using BookingWeb.Domain.Models;
+using BookingWeb.Domain.Entities;
 using BookingWeb.UnitTests.TestDoubles;
 using Moq;
 using Shouldly;
