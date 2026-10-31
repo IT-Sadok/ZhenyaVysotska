@@ -1,6 +1,7 @@
 using BookingWeb.Application.Interfaces;
 using BookingWeb.Application.Listings;
 using BookingWeb.Application.Listings.Requests;
+using BookingWeb.Application.Models;
 using BookingWeb.Domain.Models;
 using BookingWeb.UnitTests.TestDoubles;
 using Moq;
@@ -61,6 +62,69 @@ public sealed class ListingServiceTests
         var result = await _sut.GetByIdAsync(listing.Id);
 
         result.Error.ShouldBe(ListingErrors.NotFound);
+    }
+
+    [Fact]
+    public async Task GetMine_ShouldReturnEmptyList_WhenHostHasNoListings()
+    {
+        _listings
+            .Setup(repository => repository.GetByHostAsync(_hostId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync([]);
+
+        var result = await _sut.GetMineAsync(_hostId);
+
+        result.IsSuccess.ShouldBeTrue();
+        result.Value.ShouldNotBeNull();
+        result.Value.ShouldBeEmpty();
+    }
+
+    [Fact]
+    public async Task GetMine_ShouldMapEveryListing_WhenHostHasListings()
+    {
+        var first = Listing.Create(_hostId, "Loft", null, "Kyiv", "Khreshchatyk 1", 1000m, 2, Now);
+        var second = Listing.Create(_hostId, "Villa", "Pool", "Odesa", "Prymorska 1", 3000m, 6, Now);
+        _listings
+            .Setup(repository => repository.GetByHostAsync(_hostId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync([first, second]);
+
+        var result = await _sut.GetMineAsync(_hostId);
+
+        result.Value.Select(dto => dto.Id).ShouldBe([first.Id, second.Id]);
+        result.Value.Select(dto => dto.Title).ShouldBe(["Loft", "Villa"]);
+    }
+
+    [Fact]
+    public async Task Search_ShouldReturnEmptyItemsAndKeepPaging_WhenNothingMatches()
+    {
+        var filter = new ListingFilterDto("Lviv", null, Page: 3, PageSize: 10);
+        _listings
+            .Setup(repository => repository.SearchAsync(filter, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new PagedResult<Listing>([], 0, 3, 10));
+
+        var result = await _sut.SearchAsync(filter);
+
+        result.IsSuccess.ShouldBeTrue();
+        result.Value.Items.ShouldNotBeNull();
+        result.Value.Items.ShouldBeEmpty();
+        result.Value.TotalCount.ShouldBe(0);
+        result.Value.Page.ShouldBe(3);
+        result.Value.PageSize.ShouldBe(10);
+    }
+
+    [Fact]
+    public async Task Search_ShouldMapItemsAndKeepTotalCount_WhenListingsMatch()
+    {
+        var filter = new ListingFilterDto("Kyiv", null, Page: 1, PageSize: 1);
+        var listing = Listing.Create(_hostId, "Loft", null, "Kyiv", "Khreshchatyk 1", 1000m, 2, Now);
+        _listings
+            .Setup(repository => repository.SearchAsync(filter, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new PagedResult<Listing>([listing], 5, 1, 1));
+
+        var result = await _sut.SearchAsync(filter);
+
+        result.Value.Items.Count.ShouldBe(1);
+        result.Value.Items[0].Id.ShouldBe(listing.Id);
+        result.Value.TotalCount.ShouldBe(5);
     }
 
     [Fact]

@@ -1,6 +1,7 @@
 using System.Reflection;
 using BookingWeb.Application.Admin;
 using BookingWeb.Application.Auth;
+using BookingWeb.Application.Common.Mapping;
 using BookingWeb.Application.Interfaces;
 using BookingWeb.Application.Listings;
 using BookingWeb.Application.Profiles;
@@ -22,6 +23,8 @@ public static class ApplicationServiceCollectionExtensions
         services.AddScoped<IListingService, ListingService>();
         
         services.TryAddSingleton(TimeProvider.System);
+
+        MappingConfig.RegisterMappings();
         return services;
     }
 }

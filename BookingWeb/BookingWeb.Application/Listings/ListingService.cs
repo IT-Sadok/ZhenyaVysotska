@@ -1,9 +1,9 @@
-using System.Reflection;
 using BookingWeb.Application.Interfaces;
 using BookingWeb.Application.Listings.Requests;
 using BookingWeb.Application.Models;
 using BookingWeb.Application.Results;
 using BookingWeb.Domain.Models;
+using Mapster;
 
 namespace BookingWeb.Application.Listings;
 
@@ -39,7 +39,7 @@ public sealed class ListingService : IListingService
         _listingRepository.Add(listing);
         await _unitOfWork.SaveChangesAsync(ct);
 
-        return listing.ToDto();
+        return listing.Adapt<ListingDto>();
     }
 
     public async Task<Result<ListingDto>> GetByIdAsync(
@@ -52,14 +52,14 @@ public sealed class ListingService : IListingService
             return ListingErrors.NotFound;
         }
 
-        return listing.ToDto();
+        return listing.Adapt<ListingDto>();
     }
 
     public async Task<Result<IReadOnlyList<ListingDto>>> GetMineAsync(
         Guid hostId, CancellationToken ct = default)
     {
         var listing = await _listingRepository.GetByHostAsync(hostId, ct);
-        IReadOnlyList<ListingDto> items = listing.Select(l => l.ToDto()).ToList();
+        IReadOnlyList<ListingDto> items = listing.Adapt<List<ListingDto>>();
 
         return Result.Success(items);
     }
@@ -68,7 +68,7 @@ public sealed class ListingService : IListingService
         ListingFilterDto filter, CancellationToken ct = default)
     {
         var page = await _listingRepository.SearchAsync(filter, ct);
-        var items = page.Items.Select(l=> l.ToDto()).ToList();
+        var items = page.Items.Adapt<List<ListingDto>>();
         
         return new PagedResult<ListingDto>(items, page.TotalCount, page.Page, page.PageSize);
     }
@@ -92,7 +92,7 @@ public sealed class ListingService : IListingService
         
         await _unitOfWork.SaveChangesAsync(ct);
 
-        return listing.ToDto();
+        return listing.Adapt<ListingDto>();
     }
 
     public async Task<Result> DeleteAsync(
