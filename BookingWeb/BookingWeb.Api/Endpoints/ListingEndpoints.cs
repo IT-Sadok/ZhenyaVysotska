@@ -23,9 +23,9 @@ public static class ListingEndpoints
         });
         
         group.MapGet("/{id:guid}", async (
-            Guid listingId, IListingService service, CancellationToken ct = default) =>
+            Guid id, IListingService service, CancellationToken ct = default) =>
         {
-            var result = await service.GetByIdAsync(listingId, ct);
+            var result = await service.GetByIdAsync(id, ct);
             return result.Match(Results.Ok);
         });
 

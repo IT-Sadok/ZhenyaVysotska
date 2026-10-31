@@ -1,3 +1,4 @@
+using BookingWeb.Application.Accounts;
 using BookingWeb.Application.Admin;
 using BookingWeb.Application.Auth;
 using BookingWeb.Application.Common.Interfaces;
@@ -99,7 +100,7 @@ public sealed class IdentityService : IIdentityService
     public async Task<Result<UserDto>> GetUserByIdAsync(Guid userId, CancellationToken ct = default)
     {
         var user = await _userManager.FindByIdAsync(userId.ToString());
-        if (user is null)
+        if (user is null || user.IsDeleted)
         {
             return UserErrors.NotFound;
         }
@@ -111,7 +112,32 @@ public sealed class IdentityService : IIdentityService
     {
         return _users.GetUsersAsync(filter, ct);
     }
-    
+
+    public async Task<bool> CheckPasswordAsync(Guid userId, string password, CancellationToken ct = default)
+    {
+        var user = await _userManager.FindByIdAsync(userId.ToString());
+
+        return user is not null
+               && !user.IsDeleted
+               && await _userManager.CheckPasswordAsync(user, password);
+    }
+
+    public async Task<Result> SoftDeleteAsync(Guid userId, DateTimeOffset deletedAtUtc, CancellationToken ct = default)
+    {
+        var user = await _userManager.FindByIdAsync(userId.ToString());
+        if (user is null || user.IsDeleted)
+        {
+            return UserErrors.NotFound;
+        }
+
+        user.MarkDeleted(deletedAtUtc);
+        var result = await _userManager.UpdateAsync(user);
+
+        return result.Succeeded
+            ? Result.Success()
+            : AccountErrors.DeletionFailed(Describe(result));
+    }
+
     private async Task<UserDto> ToUserDtoAsync(ApplicationUser user)
     {
         var roles = await _userManager.GetRolesAsync(user);

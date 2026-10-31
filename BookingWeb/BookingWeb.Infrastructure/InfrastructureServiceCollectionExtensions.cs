@@ -1,3 +1,4 @@
+using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
 using BookingWeb.Application.Common.Interfaces;
@@ -69,6 +70,9 @@ public static class InfrastructureServiceCollectionExtensions
         services.Configure<RefreshTokenSettings>(configuration.GetSection(RefreshTokenSettings.SectionName));
  
         services.AddSingleton<IJwtTokenGenerator, JwtTokenGenerator>();
+        
+        services.AddMemoryCache();
+        services.AddSingleton<IDeletedUserRegistry, MemoryDeletedUserRegistry>();
     }
  
     private static void AddAuthenticationAndAuthorization(
@@ -78,22 +82,40 @@ public static class InfrastructureServiceCollectionExtensions
  
         services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             .AddJwtBearer(options =>
-            {
-                options.MapInboundClaims = false;
+        {
+            options.MapInboundClaims = false;
  
-                options.TokenValidationParameters = new TokenValidationParameters
+            options.TokenValidationParameters = new TokenValidationParameters
+            {
+                ValidateIssuer = true,
+                ValidateAudience = true,
+                ValidateLifetime = true,
+                ValidateIssuerSigningKey = true,
+                ValidIssuer = jwtSettings.Issuer,
+                ValidAudience = jwtSettings.Audience,
+                IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtSettings.Secret)),
+                RoleClaimType = "role",
+                NameClaimType = "sub"
+            };
+
+            options.Events = new JwtBearerEvents
+            {
+                OnTokenValidated = context =>
                 {
-                    ValidateIssuer = true,
-                    ValidateAudience = true,
-                    ValidateLifetime = true,
-                    ValidateIssuerSigningKey = true,
-                    ValidIssuer = jwtSettings.Issuer,
-                    ValidAudience = jwtSettings.Audience,
-                    IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtSettings.Secret)),
-                    RoleClaimType = "role",
-                    NameClaimType = "sub"
-                };
-            });
+                    var deletedUsers = context.HttpContext.RequestServices
+                        .GetRequiredService<IDeletedUserRegistry>();
+
+                    var subject = context.Principal?.FindFirstValue(JwtRegisteredClaimNames.Sub);
+                    if (Guid.TryParse(subject, out var userId) && deletedUsers.IsDeleted(userId))
+                    {
+                        context.Fail("The account has been deleted.");
+                    }
+
+                    return Task.CompletedTask;
+                }
+            };
+        });
+
 
         services.AddAuthorizationBuilder()
             .AddPolicy(PolicyNames.AdminOnly, policy => policy.RequireRole(Roles.Admin))

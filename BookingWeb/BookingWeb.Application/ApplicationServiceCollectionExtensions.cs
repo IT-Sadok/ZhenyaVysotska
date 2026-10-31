@@ -1,4 +1,5 @@
 using System.Reflection;
+using BookingWeb.Application.Accounts;
 using BookingWeb.Application.Admin;
 using BookingWeb.Application.Auth;
 using BookingWeb.Application.Bookings;
@@ -22,6 +23,7 @@ public static class ApplicationServiceCollectionExtensions
         services.AddScoped<IRefreshTokenService, RefreshTokenService>(); 
         services.AddScoped<IBookingService, BookingService>();
         services.AddScoped<IListingService, ListingService>();
+        services.AddScoped<IAccountService, AccountService>();
         
         services.TryAddSingleton(TimeProvider.System);
         return services;
