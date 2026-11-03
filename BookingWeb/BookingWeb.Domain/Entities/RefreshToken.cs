@@ -1,4 +1,6 @@
-namespace BookingWeb.Domain.Models;
+using Ardalis.GuardClauses;
+
+namespace BookingWeb.Domain.Entities;
 
 public sealed class RefreshToken
 {
@@ -14,9 +16,12 @@ public sealed class RefreshToken
     public static RefreshToken Create(
         Guid userId, string tokenHash, DateTimeOffset createdAtUtc, DateTimeOffset expiresAtUtc)
     {
-        Guard.ThrowIfEmpty(userId);
-        ArgumentException.ThrowIfNullOrWhiteSpace(tokenHash);
-        ArgumentOutOfRangeException.ThrowIfLessThanOrEqual(expiresAtUtc, createdAtUtc);
+        Guard.Against.Default(userId);
+        Guard.Against.NullOrWhiteSpace(tokenHash);
+        Guard.Against.Expression(
+            expiresAt => expiresAt <= createdAtUtc,
+            expiresAtUtc,
+            "Expiry must be after creation time.");
         
         return new RefreshToken
         {

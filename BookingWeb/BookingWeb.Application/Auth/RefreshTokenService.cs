@@ -2,7 +2,7 @@ using System.Security.Cryptography;
 using BookingWeb.Application.Common.Interfaces;
 using BookingWeb.Application.Common.Settings;
 using BookingWeb.Application.Results;
-using BookingWeb.Domain.Models;
+using BookingWeb.Domain.Entities;
 using Microsoft.Extensions.Options;
 
 namespace BookingWeb.Application.Auth;

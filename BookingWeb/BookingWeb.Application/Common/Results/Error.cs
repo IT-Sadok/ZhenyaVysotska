@@ -6,7 +6,8 @@ public enum ErrorType
     NotFound,
     Conflict,
     Unauthorized,
-    Forbidden
+    Forbidden,
+    Unavailable
 }
 public record Error(string Code, string Description,  ErrorType Type = ErrorType.Failure)
 {

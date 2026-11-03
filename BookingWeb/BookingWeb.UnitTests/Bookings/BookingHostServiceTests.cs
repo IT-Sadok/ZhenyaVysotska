@@ -1,7 +1,7 @@
 using BookingWeb.Application.Bookings;
 using BookingWeb.Application.Common.Interfaces;
 using BookingWeb.Application.Models;
-using BookingWeb.Domain.Models;
+using BookingWeb.Domain.Entities;
 using BookingWeb.UnitTests.TestDoubles;
 using Moq;
 using Shouldly;

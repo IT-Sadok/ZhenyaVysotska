@@ -1,14 +1,14 @@
 using BookingWeb.Api.Extensions;
 using BookingWeb.Application.Bookings;
 using BookingWeb.Application.Bookings.Requests;
-using BookingWeb.Application.Constants;
+using BookingWeb.Application.Common.Constants;
 using BookingWeb.Application.Models;
 
 namespace BookingWeb.Api.Endpoints;
 
-public static class BookingEndpoints
+public sealed class BookingEndpoints : IEndpointGroup
 {
-    public static IEndpointRouteBuilder MapBookingEndpoints(this IEndpointRouteBuilder routes)
+    public void MapEndpoints(IEndpointRouteBuilder routes)
     {
         var group = routes.MapGroup("/bookings")
             .WithTags("Bookings")
@@ -53,7 +53,5 @@ public static class BookingEndpoints
             var result = await bookings.CancelAsync(guestId.Value, id, ct);
             return result.Match(Results.Ok);
         });
-
-        return routes;
     }
 }

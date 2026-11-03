@@ -1,4 +1,4 @@
-using BookingWeb.Domain.Models;
+using BookingWeb.Domain.Entities;
 using Shouldly;
 
 namespace BookingWeb.UnitTests.Domain;

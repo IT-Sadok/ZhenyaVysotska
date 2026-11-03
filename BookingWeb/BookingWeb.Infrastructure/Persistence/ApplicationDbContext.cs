@@ -1,5 +1,5 @@
 using System.Reflection;
-using BookingWeb.Domain.Models;
+using BookingWeb.Domain.Entities;
 using BookingWeb.Infrastructure.Identity;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
@@ -27,6 +27,8 @@ public class ApplicationDbContext
 
         builder.HasPostgresExtension("btree_gist");
         
+        builder.HasPostgresExtension("postgis");
+
         builder.ApplyConfigurationsFromAssembly(Assembly.GetExecutingAssembly());
     }
 }

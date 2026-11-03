@@ -2,7 +2,8 @@ using BookingWeb.Application.Bookings;
 using BookingWeb.Application.Bookings.Requests;
 using BookingWeb.Application.Common.Interfaces;
 using BookingWeb.Application.Results;
-using BookingWeb.Domain.Models;
+using BookingWeb.Domain.Entities;
+using BookingWeb.Domain.ValueObjects;
 using BookingWeb.UnitTests.TestDoubles;
 using Moq;
 using Shouldly;
@@ -36,7 +37,10 @@ public sealed class BookingServiceTests
     
     private static Listing CreateListing(Guid? hostId = null, int maxGuests = 4)
     {
-        return Listing.Create(hostId ?? Guid.NewGuid(), "Loft", null, "Kyiv", "Khreshchatyk 1", 1000m, maxGuests, Now);
+        return Listing.Create(
+            hostId ?? Guid.NewGuid(), "Loft", null, "UA", "Kyiv", "Kyiv", "Khreshchatyk 1",
+            location: new GeoPoint(50.4501, 30.5234), publicLocation: new GeoPoint(50.4530, 30.5260),
+            1000m, maxGuests, Now);
     }
 
     private void SetupListing(Listing listing)

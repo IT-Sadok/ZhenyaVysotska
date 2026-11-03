@@ -2,7 +2,7 @@ using BookingWeb.Application.Common.Interfaces;
 using BookingWeb.Application.Profiles;
 using BookingWeb.Application.Profiles.Requests;
 using BookingWeb.Application.Results;
-using BookingWeb.Domain.Models;
+using BookingWeb.Domain.Entities;
 using Moq;
 using Shouldly;
 

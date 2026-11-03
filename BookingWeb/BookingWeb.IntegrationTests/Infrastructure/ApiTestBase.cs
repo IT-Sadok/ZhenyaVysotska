@@ -14,6 +14,8 @@ namespace BookingWeb.IntegrationTests.Infrastructure;
 public abstract class ApiTestBase : IAsyncLifetime
 {
     protected const string DefaultPassword = "Password1!";
+    protected const double KyivLatitude = 50.4501;
+    protected const double KyivLongitude = 30.5234;
 
     protected ApiTestBase(ApiFactory factory)
     {
@@ -25,7 +27,11 @@ public abstract class ApiTestBase : IAsyncLifetime
     
     protected HttpClient Client { get; }
 
-    public Task InitializeAsync() => Factory.ResetDatabaseAsync();
+    public Task InitializeAsync()
+    {
+        Factory.ResetGeocoding();
+        return Factory.ResetDatabaseAsync();
+    }
 
     public Task DisposeAsync()
     {
@@ -68,18 +74,21 @@ public abstract class ApiTestBase : IAsyncLifetime
         return CreateAuthorizedClient(auth.AccessToken);
     }
 
-    protected static async Task<ListingDto> CreateListingAsync(
+    protected static async Task<HostListingDto> CreateListingAsync(
         HttpClient hostClient,
         decimal pricePerNight = 1000m,
         int maxGuests = 4,
-        string city = "Kyiv")
+        string city = "Kyiv",
+        double latitude = KyivLatitude,
+        double longitude = KyivLongitude)
     {
-        var request = new ListingRequest("Loft", "Cozy loft", city, "Khreshchatyk 1", pricePerNight, maxGuests);
+        var request = new ListingRequest(
+            "Loft", "Cozy loft", "UA", "Kyiv", city, "Khreshchatyk 1", latitude, longitude, pricePerNight, maxGuests);
 
         var response = await hostClient.PostAsJsonAsync("/api/listings", request);
 
         await response.ShouldHaveStatusAsync(HttpStatusCode.Created);
-        return (await response.Content.ReadFromJsonAsync<ListingDto>())!;
+        return (await response.Content.ReadFromJsonAsync<HostListingDto>())!;
     }
     
     protected static Task<HttpResponseMessage> BookAsync(

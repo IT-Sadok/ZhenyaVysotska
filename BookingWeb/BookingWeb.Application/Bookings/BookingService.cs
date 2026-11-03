@@ -2,7 +2,8 @@ using BookingWeb.Application.Bookings.Requests;
 using BookingWeb.Application.Common.Interfaces;
 using BookingWeb.Application.Models;
 using BookingWeb.Application.Results;
-using BookingWeb.Domain.Models;
+using BookingWeb.Domain.Entities;
+using Mapster;
 
 namespace BookingWeb.Application.Bookings;
 
@@ -66,14 +67,14 @@ public sealed class BookingService : IBookingService
             return saveResult.Error;
         }
 
-        return booking.ToDto();
+        return booking.Adapt<BookingDto>();
     }
 
     public async Task<Result<PagedResult<BookingDto>>> GetMineAsync(
         Guid guestId, PageRequest request, CancellationToken ct = default)
     {
         var page = await _bookings.GetForGuestAsync(guestId, request, ct);
-        var items = page.Items.Select(booking => booking.ToDto()).ToList();
+        var items = page.Items.Adapt<List<BookingDto>>();
         
         return new PagedResult<BookingDto>(items, page.TotalCount, page.Page, page.PageSize);
     }
@@ -87,7 +88,7 @@ public sealed class BookingService : IBookingService
             return BookingErrors.NotFound;
         }
 
-        return booking.ToDto();
+        return booking.Adapt<BookingDto>();
     }
     
     public async Task<Result<PagedResult<BookingDto>>> GetForHostListingAsync(
@@ -101,7 +102,7 @@ public sealed class BookingService : IBookingService
 
         var page = await _bookings.GetForListingAsync(listing.Id, request, ct);
 
-        var items = page.Items.Select(booking => booking.ToDto()).ToList();
+        var items = page.Items.Adapt<List<BookingDto>>();
         return new PagedResult<BookingDto>(items, page.TotalCount, page.Page, page.PageSize);
     }
 
@@ -123,7 +124,7 @@ public sealed class BookingService : IBookingService
         booking.Cancel(now, BookingCanceller.Guest);
         await _unitOfWork.SaveChangesAsync(ct);
 
-        return booking.ToDto();
+        return booking.Adapt<BookingDto>();
     }
     
     public async Task<Result<BookingDto>> CancelByHostAsync(
@@ -144,6 +145,6 @@ public sealed class BookingService : IBookingService
         booking.Cancel(now, BookingCanceller.Host);
         await _unitOfWork.SaveChangesAsync(ct);
 
-        return booking.ToDto();
+        return booking.Adapt<BookingDto>();
     }
 }

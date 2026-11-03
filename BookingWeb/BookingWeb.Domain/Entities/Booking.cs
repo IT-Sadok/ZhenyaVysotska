@@ -1,4 +1,6 @@
-namespace BookingWeb.Domain.Models;
+using Ardalis.GuardClauses;
+
+namespace BookingWeb.Domain.Entities;
 
 public sealed class Booking
 {
@@ -27,11 +29,14 @@ public sealed class Booking
         decimal pricePerNight,
         DateTimeOffset createdAtUtc)
     {
-        Guard.ThrowIfEmpty(listingId);
-        Guard.ThrowIfEmpty(guestId);
-        ArgumentOutOfRangeException.ThrowIfLessThanOrEqual(checkOut, checkIn);
-        ArgumentOutOfRangeException.ThrowIfLessThan(guests, 1);
-        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(pricePerNight);
+        Guard.Against.Default(listingId);
+        Guard.Against.Default(guestId);
+        Guard.Against.Expression(
+            checkOutDate => checkOutDate <= checkIn,
+            checkOut,
+            "Check-out must be after check-in.");
+        Guard.Against.NegativeOrZero(guests);
+        Guard.Against.NegativeOrZero(pricePerNight);
         
         var nights = checkOut.DayNumber - checkIn.DayNumber;
 

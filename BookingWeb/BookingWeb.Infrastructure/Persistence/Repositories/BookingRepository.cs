@@ -1,6 +1,6 @@
 using BookingWeb.Application.Common.Interfaces;
 using BookingWeb.Application.Models;
-using BookingWeb.Domain.Models;
+using BookingWeb.Domain.Entities;
 using Microsoft.EntityFrameworkCore;
 
 namespace BookingWeb.Infrastructure.Persistence.Repositories;
