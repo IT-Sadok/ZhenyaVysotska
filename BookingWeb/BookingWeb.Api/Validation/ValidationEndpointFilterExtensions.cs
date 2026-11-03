@@ -6,6 +6,8 @@ public sealed record ValidationEnableMetadata;
 
 public static class ValidationEndpointFilterExtensions
 {
+    public const string ErrorCodesExtension = "errorCodes";
+
     public static TBuilder WithValidation<TBuilder>(this TBuilder builder)
         where TBuilder : IEndpointConventionBuilder
     {
@@ -43,7 +45,14 @@ public static class ValidationEndpointFilterExtensions
 
                 if (!validationResult.IsValid)
                 {
-                    return TypedResults.ValidationProblem(validationResult.ToDictionary());
+                    var errorCodes = validationResult.Errors
+                        .Select(error => error.ErrorCode)
+                        .Distinct()
+                        .ToArray();
+
+                    return TypedResults.ValidationProblem(
+                        validationResult.ToDictionary(),
+                        extensions: new Dictionary<string, object?> { [ErrorCodesExtension] = errorCodes });
                 }
             }
 

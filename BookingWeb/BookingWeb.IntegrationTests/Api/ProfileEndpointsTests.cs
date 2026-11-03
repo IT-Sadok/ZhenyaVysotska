@@ -1,6 +1,6 @@
 using System.Net;
 using System.Net.Http.Json;
-using BookingWeb.Application.Models;
+using BookingWeb.Application.Profiles;
 using BookingWeb.Application.Profiles.Requests;
 using BookingWeb.IntegrationTests.Infrastructure;
 using Shouldly;
@@ -40,7 +40,7 @@ public sealed class ProfileEndpointsTests : ApiTestBase
     }
 
     [Fact]
-    public async Task UpdateProfile_ShouldPersistChanges_WhenRequestIsValid()
+    public async Task UpdateProfile_ShouldPersistTrimmedChanges_WhenRequestIsValid()
     {
         var auth = await RegisterAsync("ivan@test.com");
         using var client = CreateAuthorizedClient(auth.AccessToken);

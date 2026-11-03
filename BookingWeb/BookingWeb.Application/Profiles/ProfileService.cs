@@ -1,8 +1,7 @@
 using BookingWeb.Application.Interfaces;
-using BookingWeb.Application.Models;
 using BookingWeb.Application.Profiles.Requests;
 using BookingWeb.Application.Results;
-using FluentValidation;
+using Mapster;
 
 namespace BookingWeb.Application.Profiles;
 
@@ -25,8 +24,7 @@ public class ProfileService : IProfileService
         {
             return new Error("Profile.NotFound", "Profile not found", ErrorType.NotFound);
         }
-        return new ProfileDto(profile.UserId, profile.FirstName, profile.LastName, 
-            profile.Bio, profile.AvatarUrl);
+        return profile.Adapt<ProfileDto>();
     }
     
     public async Task<Result<ProfileDto>> UpdateAsync(
@@ -42,8 +40,7 @@ public class ProfileService : IProfileService
         
         await _unitOfWork.SaveChangesAsync(ct);
 
-        return new ProfileDto(profile.UserId, profile.FirstName, 
-            profile.LastName, profile.Bio, profile.AvatarUrl);
+        return profile.Adapt<ProfileDto>();
     }
     
 }

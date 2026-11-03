@@ -2,9 +2,9 @@ using System.Net;
 using System.Net.Http.Json;
 using System.Security.Cryptography;
 using System.Text;
+using BookingWeb.Application.Auth;
 using BookingWeb.Application.Auth.Requests;
 using BookingWeb.Application.Auth.Responses;
-using BookingWeb.Application.Models;
 using BookingWeb.Domain;
 using BookingWeb.Infrastructure.Persistence;
 using BookingWeb.IntegrationTests.Infrastructure;
@@ -257,7 +257,7 @@ public sealed class AuthEndpointsTests : ApiTestBase
     }
     
     [Fact]
-    public async Task Logout_ShouldReturnUnauthorized_WhenAccessTokenIsMissing()
+    public async Task Logout_ShouldReturnUnauthorizedAndKeepRefreshToken_WhenAccessTokenIsMissing()
     {
         var auth = await RegisterAsync("ivan@test.com");
 

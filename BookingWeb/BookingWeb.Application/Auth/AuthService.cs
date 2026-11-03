@@ -1,11 +1,8 @@
-using System.Data.Common;
 using BookingWeb.Application.Auth.Requests;
 using BookingWeb.Application.Auth.Responses;
 using BookingWeb.Application.Interfaces;
-using BookingWeb.Application.Models;
 using BookingWeb.Application.Results;
 using BookingWeb.Domain;
-using FluentValidation;
 
 namespace BookingWeb.Application.Auth;
 

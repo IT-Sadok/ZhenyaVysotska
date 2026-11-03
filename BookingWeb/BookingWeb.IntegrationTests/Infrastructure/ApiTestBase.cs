@@ -3,6 +3,8 @@ using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using BookingWeb.Application.Auth.Requests;
 using BookingWeb.Application.Auth.Responses;
+using BookingWeb.Application.Listings;
+using BookingWeb.Application.Listings.Requests;
 using BookingWeb.Domain;
 
 namespace BookingWeb.IntegrationTests.Infrastructure;
@@ -11,6 +13,8 @@ namespace BookingWeb.IntegrationTests.Infrastructure;
 public abstract class ApiTestBase : IAsyncLifetime
 {
     protected const string DefaultPassword = "Password1!";
+    protected const double KyivLatitude = 50.4501;
+    protected const double KyivLongitude = 30.5234;
 
     protected ApiTestBase(ApiFactory factory)
     {
@@ -22,7 +26,11 @@ public abstract class ApiTestBase : IAsyncLifetime
     
     protected HttpClient Client { get; }
 
-    public Task InitializeAsync() => Factory.ResetDatabaseAsync();
+    public Task InitializeAsync()
+    {
+        Factory.ResetGeocoding();
+        return Factory.ResetDatabaseAsync();
+    }
 
     public Task DisposeAsync()
     {
@@ -55,6 +63,31 @@ public abstract class ApiTestBase : IAsyncLifetime
     protected Task<AuthResponse> LoginAsAdminAsync()
     {
         return LoginAsync(ApiFactory.AdminEmail, ApiFactory.AdminPassword);
+    }
+    
+    protected static DateOnly Today => DateOnly.FromDateTime(DateTime.UtcNow);
+    
+    protected async Task<HttpClient> CreateUserClientAsync(string email, string role)
+    {
+        var auth = await RegisterAsync(email, role);
+        return CreateAuthorizedClient(auth.AccessToken);
+    }
+
+    protected static async Task<HostListingDto> CreateListingAsync(
+        HttpClient hostClient,
+        decimal pricePerNight = 1000m,
+        int maxGuests = 4,
+        string city = "Kyiv",
+        double latitude = KyivLatitude,
+        double longitude = KyivLongitude)
+    {
+        var request = new ListingRequest(
+            "Loft", "Cozy loft", "UA", "Kyiv", city, "Khreshchatyk 1", latitude, longitude, pricePerNight, maxGuests);
+
+        var response = await hostClient.PostAsJsonAsync("/api/listings", request);
+
+        await response.ShouldHaveStatusAsync(HttpStatusCode.Created);
+        return (await response.Content.ReadFromJsonAsync<HostListingDto>())!;
     }
     
     protected HttpClient CreateAuthorizedClient(string accessToken)

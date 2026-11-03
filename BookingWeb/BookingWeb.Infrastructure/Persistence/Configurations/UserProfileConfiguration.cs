@@ -1,4 +1,4 @@
-using BookingWeb.Domain.Models;
+using BookingWeb.Domain.Entities;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
