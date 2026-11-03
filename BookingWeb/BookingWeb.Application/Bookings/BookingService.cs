@@ -60,13 +60,10 @@ public sealed class BookingService : IBookingService
 
         _bookings.Add(booking);
 
-        try
-        { 
-            await _unitOfWork.SaveChangesAsync(ct);
-        }
-        catch (BookingOverlapException)
+        var saveResult = await _unitOfWork.SaveChangesAsync(ct);
+        if (saveResult.IsFailure)
         {
-            return BookingErrors.DatesUnavailable;
+            return saveResult.Error;
         }
 
         return booking.ToDto();

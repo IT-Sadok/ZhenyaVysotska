@@ -101,7 +101,7 @@ public sealed class ListingService : IListingService
             return ListingErrors.NotFound;
         }
 
-        var today = _timeProvider.GetUtcToday();
+        var today = _timeProvider.GetUtcNowDateOnly();
         if (await _bookingRepository.HasUpcomingForListingAsync(listing.Id, today, ct))
         {
             return ListingErrors.HasUpcomingBookings;

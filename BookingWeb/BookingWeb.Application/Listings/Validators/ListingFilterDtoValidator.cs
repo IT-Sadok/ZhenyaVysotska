@@ -19,7 +19,7 @@ public sealed class ListingFilterDtoValidator : AbstractValidator<ListingFilterD
             .WithMessage("CheckOut is required when CheckIn is given.");
         
         RuleFor(x => x.CheckIn)
-            .Must(checkIn => checkIn >= timeProvider.GetUtcToday())
+            .Must(checkIn => checkIn >= timeProvider.GetUtcNowDateOnly())
             .When(x => x.CheckIn is not null)
             .WithMessage("CheckIn can't be in the past.");
 

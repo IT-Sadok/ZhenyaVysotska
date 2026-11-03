@@ -23,6 +23,10 @@ public sealed class BookingServiceTests
     
     public BookingServiceTests()
     {
+        _unitOfWork
+            .Setup(unitOfWork => unitOfWork.SaveChangesAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Result.Success());
+
         _sut = new BookingService(
             _bookings.Object,
             _listings.Object,
@@ -123,13 +127,13 @@ public sealed class BookingServiceTests
     }
 
     [Fact]
-    public async Task Create_ShouldReturnDatesUnavailable_WhenSaveThrowsOverlap()
+    public async Task Create_ShouldReturnDatesUnavailable_WhenSaveReportsOverlap()
     {
         var listing = CreateListing();
         SetupListing(listing);
         _unitOfWork
             .Setup(unitOfWork => unitOfWork.SaveChangesAsync(It.IsAny<CancellationToken>()))
-            .ThrowsAsync(new BookingOverlapException(new Exception("23P01")));
+            .ReturnsAsync(Result.Failure(BookingErrors.DatesUnavailable));
 
         var result = await _sut.CreateAsync(_guestId, CreateRequest(listing));
 

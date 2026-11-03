@@ -58,7 +58,12 @@ public sealed class IdentityService : IIdentityService
         }
         
         _userProfiles.Add(UserProfile.Create(user.Id, firstName, lastName));
-        await _unitOfWork.SaveChangesAsync(ct);
+        var saveResult = await _unitOfWork.SaveChangesAsync(ct);
+        if (saveResult.IsFailure)
+        {
+            return saveResult.Error;
+        }
+
         await transaction.CommitAsync(ct);
  
         return await ToUserDtoAsync(user);

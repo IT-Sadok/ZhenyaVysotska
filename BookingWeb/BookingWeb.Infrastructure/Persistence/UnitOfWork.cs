@@ -1,5 +1,6 @@
 using BookingWeb.Application.Bookings;
 using BookingWeb.Application.Common.Interfaces;
+using BookingWeb.Application.Results;
 using BookingWeb.Infrastructure.Persistence.Configurations;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Storage;
@@ -16,11 +17,12 @@ public sealed class UnitOfWork : IUnitOfWork
         _db = db;
     }
     
-    public async Task SaveChangesAsync(CancellationToken ct = default)
+    public async Task<Result> SaveChangesAsync(CancellationToken ct = default)
     {
         try
         {
             await _db.SaveChangesAsync(ct);
+            return Result.Success();
         }
         catch (DbUpdateException exception) when (exception.InnerException is PostgresException
                                                   {
@@ -28,7 +30,7 @@ public sealed class UnitOfWork : IUnitOfWork
                                                       ConstraintName: BookingConfiguration.NoOverlapConstraintName
                                                   })
         {
-            throw new BookingOverlapException(exception);
+            return BookingErrors.DatesUnavailable;
         }
     }
 
