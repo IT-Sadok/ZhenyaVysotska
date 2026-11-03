@@ -38,6 +38,19 @@ public static class HttpResponseAssertions
         return errors.EnumerateObject().Select(property => property.Name).ToList();
     }
     
+    /// <summary>Machine-readable codes from the "errorCodes" extension of a ValidationProblem.</summary>
+    public static async Task<IReadOnlyList<string>> ReadErrorCodesAsync(this HttpResponseMessage response)
+    {
+        using var document = await ReadJsonAsync(response);
+
+        if (!document.RootElement.TryGetProperty("errorCodes", out var codes))
+        {
+            return [];
+        }
+
+        return codes.EnumerateArray().Select(code => code.GetString()!).ToList();
+    }
+
     private static async Task<JsonDocument> ReadJsonAsync(HttpResponseMessage response)
     {
         var body = await response.Content.ReadAsStringAsync();

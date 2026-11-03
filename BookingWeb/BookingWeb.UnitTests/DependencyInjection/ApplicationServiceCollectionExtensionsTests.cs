@@ -35,6 +35,18 @@ public sealed class ApplicationServiceCollectionExtensionsTests
     }
 
     [Fact]
+    public void AddApplication_ShouldRegisterLocationObfuscatorAsSingleton_WhenCalled()
+    {
+        var services = new ServiceCollection();
+
+        services.AddApplication();
+
+        var descriptor = services.Where(d => d.ServiceType == typeof(ILocationObfuscator)).ShouldHaveSingleItem();
+        descriptor.ImplementationType.ShouldBe(typeof(LocationObfuscator));
+        descriptor.Lifetime.ShouldBe(ServiceLifetime.Singleton);
+    }
+
+    [Fact]
     public void AddApplication_ShouldNotRegisterServiceTwice_WhenCalledOnce()
     {
         var services = new ServiceCollection();

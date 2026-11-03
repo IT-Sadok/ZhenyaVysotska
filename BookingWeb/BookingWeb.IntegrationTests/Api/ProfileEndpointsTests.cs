@@ -40,7 +40,7 @@ public sealed class ProfileEndpointsTests : ApiTestBase
     }
 
     [Fact]
-    public async Task UpdateProfile_ShouldPersistChanges_WhenRequestIsValid()
+    public async Task UpdateProfile_ShouldPersistTrimmedChanges_WhenRequestIsValid()
     {
         var auth = await RegisterAsync("ivan@test.com");
         using var client = CreateAuthorizedClient(auth.AccessToken);

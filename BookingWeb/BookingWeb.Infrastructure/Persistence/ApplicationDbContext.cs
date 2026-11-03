@@ -23,7 +23,9 @@ public class ApplicationDbContext
     protected override void OnModelCreating(ModelBuilder builder)
     {
         base.OnModelCreating(builder);
-        
+
+        builder.HasPostgresExtension("postgis");
+
         builder.ApplyConfigurationsFromAssembly(Assembly.GetExecutingAssembly());
     }
 }

@@ -257,7 +257,7 @@ public sealed class AuthEndpointsTests : ApiTestBase
     }
     
     [Fact]
-    public async Task Logout_ShouldReturnUnauthorized_WhenAccessTokenIsMissing()
+    public async Task Logout_ShouldReturnUnauthorizedAndKeepRefreshToken_WhenAccessTokenIsMissing()
     {
         var auth = await RegisterAsync("ivan@test.com");
 
