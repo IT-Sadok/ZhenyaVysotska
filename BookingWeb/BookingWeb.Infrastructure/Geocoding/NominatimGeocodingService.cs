@@ -12,14 +12,11 @@ using Microsoft.Extensions.Options;
 
 namespace BookingWeb.Infrastructure.Geocoding;
 
-/// <summary>
-/// Geocoding through the public Nominatim API (https://operations.osmfoundation.org/policies/nominatim/).
-/// Results are cached here; the 1 request/second limit is enforced by <see cref="NominatimRateLimitHandler"/>.
-/// </summary>
 public sealed class NominatimGeocodingService : IGeocodingService
 {
-    // Nominatim may return several of these; the first non-empty one is the "city" for our purposes.
     private static readonly string[] CityKeys = ["city", "town", "village", "municipality"];
+
+    private const int ReverseCoordinateDecimals = 5;
 
     private readonly HttpClient _http;
     private readonly IMemoryCache _cache;
@@ -52,7 +49,6 @@ public sealed class NominatimGeocodingService : IGeocodingService
 
         if (_cache.TryGetValue(cacheKey, out IReadOnlyList<GeocodingCandidateDto>? cached))
         {
-            // Explicit Success: C# has no implicit conversions from an interface type (IReadOnlyList).
             return Result.Success(cached!);
         }
 
@@ -68,8 +64,9 @@ public sealed class NominatimGeocodingService : IGeocodingService
 
         IReadOnlyList<GeocodingCandidateDto> candidates = response.Value.Select(ToCandidate).ToList();
 
-        // Only successful answers are cached: a failure must not stick for 30 days.
-        Store(cacheKey, candidates, candidates.Count == 0 ? settings.EmptyResultCacheDuration : settings.CacheDuration);
+        Store(cacheKey, candidates, candidates.Count == 0 
+            ? settings.EmptyResultCacheDuration 
+            : settings.CacheDuration);
         return Result.Success(candidates);
     }
 
@@ -81,10 +78,9 @@ public sealed class NominatimGeocodingService : IGeocodingService
         {
             return GeocodingErrors.Disabled;
         }
-
-        // "R" round-trips the exact double, so the key and the URL use the same text.
-        var lat = latitude.ToString("R", CultureInfo.InvariantCulture);
-        var lng = longitude.ToString("R", CultureInfo.InvariantCulture);
+        
+        var lat = FormatCoordinate(latitude);
+        var lng = FormatCoordinate(longitude);
         var cacheKey = $"geocoding:reverse:{settings.AcceptLanguage}:{lat}:{lng}";
 
         if (_cache.TryGetValue(cacheKey, out ReverseGeocodingDto? cached))
@@ -102,7 +98,6 @@ public sealed class NominatimGeocodingService : IGeocodingService
             return response.Error;
         }
 
-        // For points with no address (open sea) Nominatim answers 200 with {"error": "Unable to geocode"}.
         if (response.Value.Error is not null || response.Value.DisplayName is null)
         {
             return GeocodingErrors.NotFound;
@@ -121,7 +116,6 @@ public sealed class NominatimGeocodingService : IGeocodingService
 
             if (!response.IsSuccessStatusCode)
             {
-                // 403/429 usually mean we were blocked for violating the usage policy: worth an error-level log.
                 _logger.LogError("Nominatim returned {StatusCode} for {Url}", (int)response.StatusCode, url);
                 return GeocodingErrors.Unavailable;
             }
@@ -139,8 +133,6 @@ public sealed class NominatimGeocodingService : IGeocodingService
             _logger.LogWarning("Nominatim request rejected: rate limit queue is full");
             return GeocodingErrors.Busy;
         }
-        // HttpClient.Timeout and a cancelled request both throw TaskCanceledException.
-        // If the caller cancelled (client went away), let it propagate; otherwise it was our timeout.
         catch (TaskCanceledException) when (!ct.IsCancellationRequested)
         {
             _logger.LogWarning("Nominatim request timed out for {Url}", url);
@@ -158,12 +150,10 @@ public sealed class NominatimGeocodingService : IGeocodingService
         _cache.Set(key, value, new MemoryCacheEntryOptions
         {
             AbsoluteExpirationRelativeToNow = duration,
-            // The cache has a SizeLimit (see AddGeocoding), so every entry must declare its size.
             Size = 1
         });
     }
-
-    /// <summary>Trim, collapse inner whitespace and normalize Unicode, so "  Kyiv " and "Kyiv" share a cache entry.</summary>
+    
     internal static string NormalizeQuery(string query)
     {
         var words = query.Normalize(NormalizationForm.FormC)
@@ -197,9 +187,12 @@ public sealed class NominatimGeocodingService : IGeocodingService
             response.DisplayName!,
             city,
             address.GetValueOrDefault("state"),
-            // Only codes our listings accept, so the host form can use it as is.
             countryCode is not null && CountryCodes.IsValid(countryCode) ? countryCode : null);
     }
 
     private static double ParseDouble(string value) => double.Parse(value, CultureInfo.InvariantCulture);
+
+    internal static string FormatCoordinate(double value) =>
+        Math.Round(value, ReverseCoordinateDecimals, MidpointRounding.AwayFromZero)
+            .ToString("R", CultureInfo.InvariantCulture);
 }
