@@ -64,9 +64,11 @@ namespace BookingWeb.Infrastructure.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("ListingId");
+                    b.HasIndex("GuestId", "CheckIn", "Id")
+                        .IsDescending(false, true, false);
 
-                    b.HasIndex("GuestId", "CheckIn");
+                    b.HasIndex("ListingId", "CheckIn", "Id")
+                        .IsDescending(false, true, false);
 
                     b.ToTable("Bookings", null, t =>
                         {
