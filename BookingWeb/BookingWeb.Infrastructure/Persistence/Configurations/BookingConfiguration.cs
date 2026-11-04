@@ -1,4 +1,4 @@
-using BookingWeb.Domain.Models;
+using BookingWeb.Domain.Entities;
 using BookingWeb.Infrastructure.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
@@ -42,6 +42,10 @@ public sealed class BookingConfiguration : IEntityTypeConfiguration<Booking>
             .HasForeignKey(b => b.GuestId)
             .OnDelete(DeleteBehavior.Restrict);
 
-        builder.HasIndex(b => new { b.GuestId, b.CheckIn });
+        builder.HasIndex(b => new { b.ListingId, b.CheckIn, b.Id })
+            .IsDescending(false, true, false);
+
+        builder.HasIndex(b => new { b.GuestId, b.CheckIn, b.Id })
+            .IsDescending(false, true, false);
     }
 }

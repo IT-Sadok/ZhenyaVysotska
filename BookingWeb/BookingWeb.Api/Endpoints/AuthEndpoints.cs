@@ -8,9 +8,9 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace BookingWeb.Api.Endpoints;
 
-public static class AuthEndpoints
+public sealed class AuthEndpoints : IEndpointGroup
 {
-    public static IEndpointRouteBuilder MapAuthEndpoints(this IEndpointRouteBuilder routes)
+    public void MapEndpoints(IEndpointRouteBuilder routes)
     {
         var group = routes.MapGroup("/auth")
             .WithTags("Auth");
@@ -66,7 +66,7 @@ public static class AuthEndpoints
             return result.Match(Results.Ok);
         })
             .RequireAuthorization();
-        
+
         group.MapPost("/me/deletion", async (
                 DeleteAccountRequest request, HttpContext context,
                 IAccountService accounts, CancellationToken ct) =>
@@ -78,7 +78,5 @@ public static class AuthEndpoints
                 return result.Match(Results.NoContent);
             })
             .RequireAuthorization();
-        
-        return routes;
     }
 }

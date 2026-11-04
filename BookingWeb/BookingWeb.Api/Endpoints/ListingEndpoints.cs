@@ -1,15 +1,15 @@
 using BookingWeb.Api.Extensions;
 using BookingWeb.Application.Bookings;
-using BookingWeb.Application.Constants;
+using BookingWeb.Application.Common.Constants;
 using BookingWeb.Application.Listings;
 using BookingWeb.Application.Listings.Requests;
 using BookingWeb.Application.Models;
 
 namespace BookingWeb.Api.Endpoints;
 
-public static class ListingEndpoints
+public sealed class ListingEndpoints : IEndpointGroup
 {
-    public static IEndpointRouteBuilder MapListingEndpoints(this IEndpointRouteBuilder routes)
+    public void MapEndpoints(IEndpointRouteBuilder routes)
     {
         var group = routes.MapGroup("/listings")
             .WithTags("Listings");
@@ -22,6 +22,13 @@ public static class ListingEndpoints
             return result.Match(Results.Ok);
         });
         
+        group.MapGet("/map", async (
+            [AsParameters] MapSearchRequest request, IListingService service, CancellationToken ct = default) =>
+        {
+            var result = await service.SearchInAreaAsync(request, ct);
+            return result.Match(Results.Ok);
+        });
+
         group.MapGet("/{id:guid}", async (
             Guid id, IListingService service, CancellationToken ct = default) =>
         {
@@ -99,7 +106,5 @@ public static class ListingEndpoints
                 return result.Match(Results.NoContent);
             })
             .RequireAuthorization(PolicyNames.HostOnly);
-        
-        return routes;
     }
 }

@@ -1,4 +1,4 @@
-using BookingWeb.Domain.Models;
+using BookingWeb.Domain.Entities;
 using Shouldly;
 
 namespace BookingWeb.UnitTests.Domain;
@@ -43,10 +43,28 @@ public sealed class RefreshTokenTests
     }
 
     [Fact]
+    public void Create_ShouldThrowArgumentNull_WhenTokenHashIsNull()
+    {
+        var exception = Should.Throw<ArgumentNullException>(() => RefreshToken.Create(
+            Guid.NewGuid(), null!, CreatedAt, ExpiresAt));
+
+        exception.ParamName.ShouldBe("tokenHash");
+    }
+
+    [Fact]
     public void Create_ShouldThrow_WhenExpiryIsNotAfterCreation()
     {
         Should.Throw<ArgumentException>(() => RefreshToken.Create(
             Guid.NewGuid(), "hash", CreatedAt, CreatedAt));
+    }
+
+    [Fact]
+    public void Create_ShouldReportExpiresAtAsParamName_WhenExpiryIsBeforeCreation()
+    {
+        var exception = Should.Throw<ArgumentException>(() => RefreshToken.Create(
+            Guid.NewGuid(), "hash", CreatedAt, CreatedAt.AddSeconds(-1)));
+
+        exception.ParamName.ShouldBe("expiresAtUtc");
     }
 
     [Fact]

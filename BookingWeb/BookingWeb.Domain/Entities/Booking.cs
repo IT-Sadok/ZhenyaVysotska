@@ -1,4 +1,19 @@
-namespace BookingWeb.Domain.Models;
+using System.Linq.Expressions;
+using Ardalis.GuardClauses;
+
+namespace BookingWeb.Domain.Entities;
+
+public enum BookingStatus
+{
+    Confirmed,
+    Cancelled
+}
+
+public enum BookingCanceller
+{
+    Guest,
+    Host
+}
 
 public sealed class Booking
 {
@@ -27,11 +42,14 @@ public sealed class Booking
         decimal pricePerNight,
         DateTimeOffset createdAtUtc)
     {
-        Guard.ThrowIfEmpty(listingId);
-        Guard.ThrowIfEmpty(guestId);
-        ArgumentOutOfRangeException.ThrowIfLessThanOrEqual(checkOut, checkIn);
-        ArgumentOutOfRangeException.ThrowIfLessThan(guests, 1);
-        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(pricePerNight);
+        Guard.Against.Default(listingId);
+        Guard.Against.Default(guestId);
+        Guard.Against.Expression(
+            checkOutDate => checkOutDate <= checkIn,
+            checkOut,
+            "Check-out must be after check-in.");
+        Guard.Against.NegativeOrZero(guests);
+        Guard.Against.NegativeOrZero(pricePerNight);
         
         var nights = checkOut.DayNumber - checkIn.DayNumber;
 
@@ -48,16 +66,24 @@ public sealed class Booking
             CreatedAtUtc = createdAtUtc
         };
     }
+    
+    public static Expression<Func<Booking, bool>> Blocks(DateOnly checkIn, DateOnly checkOut) =>
+        booking => booking.Status == BookingStatus.Confirmed
+                   && booking.CheckIn < checkOut
+                   && checkIn < booking.CheckOut;
 
-    public bool CanBeCancelledAt(DateTimeOffset nowUtc)
+    public static Expression<Func<Booking, bool>> IsUpcoming(DateOnly today) =>
+        booking => booking.Status == BookingStatus.Confirmed
+                   && booking.CheckOut > today;
+    
+    public bool CanBeCancelledOn(DateOnly listingToday)
     {
-        var today = DateOnly.FromDateTime(nowUtc.UtcDateTime);
-        return Status == BookingStatus.Confirmed && today < CheckIn;
+        return Status == BookingStatus.Confirmed && listingToday < CheckIn;
     }
 
-    public void Cancel(DateTimeOffset nowUtc, BookingCanceller canceller)
+    public void Cancel(DateTimeOffset nowUtc, DateOnly listingToday, BookingCanceller canceller)
     {
-        if (!CanBeCancelledAt(nowUtc))
+        if (!CanBeCancelledOn(listingToday))
         {
             throw new InvalidOperationException(
                 "Only a confirmed booking can be cancelled, and only before the check-in day.");
@@ -67,16 +93,4 @@ public sealed class Booking
         CancelledAtUtc = nowUtc;
         CancelledBy = canceller;
     }
-}
-
-public enum BookingStatus
-{
-    Confirmed,
-    Cancelled
-}
-
-public enum BookingCanceller
-{
-    Guest,
-    Host
 }

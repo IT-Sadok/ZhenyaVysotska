@@ -33,11 +33,19 @@ public sealed class CreateBookingRequestValidatorTests
     }
 
     [Fact]
-    public void Validate_ShouldFail_WhenCheckInIsInThePast()
+    public void Validate_ShouldFail_WhenCheckInIsInThePastEverywhereOnEarth()
+    {
+        var request = CreateValidRequest() with { CheckIn = Today.AddDays(-2) };
+
+        _validator.TestValidate(request).ShouldHaveValidationErrorFor(x => x.CheckIn);
+    }
+
+    [Fact]
+    public void Validate_ShouldPass_WhenCheckInIsYesterdayInUtcButTodaySomewhereOnEarth()
     {
         var request = CreateValidRequest() with { CheckIn = Today.AddDays(-1) };
 
-        _validator.TestValidate(request).ShouldHaveValidationErrorFor(x => x.CheckIn);
+        _validator.TestValidate(request).ShouldNotHaveValidationErrorFor(x => x.CheckIn);
     }
 
     [Fact]

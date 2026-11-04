@@ -2,7 +2,8 @@ using BookingWeb.Application.Bookings;
 using BookingWeb.Application.Bookings.Requests;
 using BookingWeb.Application.Common.Interfaces;
 using BookingWeb.Application.Results;
-using BookingWeb.Domain.Models;
+using BookingWeb.Domain.Entities;
+using BookingWeb.Domain.ValueObjects;
 using BookingWeb.UnitTests.TestDoubles;
 using Moq;
 using Shouldly;
@@ -23,16 +24,28 @@ public sealed class BookingServiceTests
     
     public BookingServiceTests()
     {
-        _sut = new BookingService(
+        _unitOfWork
+            .Setup(unitOfWork => unitOfWork.SaveChangesAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Result.Success());
+
+        _sut = CreateSut(Now);
+    }
+
+    private BookingService CreateSut(DateTimeOffset utcNow)
+    {
+        return new BookingService(
             _bookings.Object,
             _listings.Object,
             _unitOfWork.Object,
-            new FixedTimeProvider(Now));
+            new FixedTimeProvider(utcNow));
     }
     
-    private static Listing CreateListing(Guid? hostId = null, int maxGuests = 4)
+    private static Listing CreateListing(Guid? hostId = null, int maxGuests = 4, string timeZoneId = "Europe/Kyiv")
     {
-        return Listing.Create(hostId ?? Guid.NewGuid(), "Loft", null, "Kyiv", "Khreshchatyk 1", 1000m, maxGuests, Now);
+        return Listing.Create(
+            hostId ?? Guid.NewGuid(), "Loft", null, "UA", "Kyiv", "Kyiv", "Khreshchatyk 1",
+            location: new GeoPoint(50.4501, 30.5234), publicLocation: new GeoPoint(50.4530, 30.5260),
+            timeZoneId, 1000m, maxGuests, Now);
     }
 
     private void SetupListing(Listing listing)
@@ -47,9 +60,14 @@ public sealed class BookingServiceTests
         return new CreateBookingRequest(listing.Id, CheckIn, CheckOut, guests);
     }
 
-    private Booking CreateBookingOfGuest()
+    private Booking SetupBookingOfGuest(Listing listing)
     {
-        return Booking.Create(Guid.NewGuid(), _guestId, CheckIn, CheckOut, 2, 1000m, Now);
+        SetupListing(listing);
+        var booking = Booking.Create(listing.Id, _guestId, CheckIn, CheckOut, 2, 1000m, Now);
+        _bookings
+            .Setup(repository => repository.GetByIdForGuestAsync(booking.Id, _guestId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(booking);
+        return booking;
     }
 
     [Fact]
@@ -123,13 +141,13 @@ public sealed class BookingServiceTests
     }
 
     [Fact]
-    public async Task Create_ShouldReturnDatesUnavailable_WhenSaveThrowsOverlap()
+    public async Task Create_ShouldReturnDatesUnavailable_WhenSaveReportsOverlap()
     {
         var listing = CreateListing();
         SetupListing(listing);
         _unitOfWork
             .Setup(unitOfWork => unitOfWork.SaveChangesAsync(It.IsAny<CancellationToken>()))
-            .ThrowsAsync(new BookingOverlapException(new Exception("23P01")));
+            .ReturnsAsync(Result.Failure(BookingErrors.DatesUnavailable));
 
         var result = await _sut.CreateAsync(_guestId, CreateRequest(listing));
 
@@ -144,13 +162,69 @@ public sealed class BookingServiceTests
         result.Error.ShouldBe(BookingErrors.NotFound);
     }
 
+    // Tokyo is UTC+9: at 16:00 UTC on Mar 9 it is already 01:00 on Mar 10 there.
+    private static readonly DateTimeOffset TokyoJustAfterMidnightOnCheckInDay = new(2026, 3, 9, 16, 0, 0, TimeSpan.Zero);
+
+    // Honolulu is UTC-10: at 06:00 UTC on Mar 10 it is still 20:00 on Mar 9 there.
+    private static readonly DateTimeOffset HonoluluEveningBeforeCheckInDay = new(2026, 3, 10, 6, 0, 0, TimeSpan.Zero);
+
+    [Fact]
+    public async Task Create_ShouldReturnCheckInInPast_WhenCheckInIsBeforeTodayInListingTimeZone()
+    {
+        var listing = CreateListing(timeZoneId: "Asia/Tokyo");
+        SetupListing(listing);
+        var sut = CreateSut(TokyoJustAfterMidnightOnCheckInDay);
+        var yesterdayInTokyo = CheckIn.AddDays(-1); // still "today" in UTC
+
+        var result = await sut.CreateAsync(
+            _guestId, new CreateBookingRequest(listing.Id, yesterdayInTokyo, CheckOut, 2));
+
+        result.Error.ShouldBe(BookingErrors.CheckInInPast);
+        _bookings.Verify(repository => repository.Add(It.IsAny<Booking>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task Create_ShouldCreateBooking_WhenCheckInIsTodayInListingTimeZoneButYesterdayInUtc()
+    {
+        var listing = CreateListing(timeZoneId: "Pacific/Honolulu");
+        SetupListing(listing);
+        var sut = CreateSut(HonoluluEveningBeforeCheckInDay);
+        var todayInHonolulu = CheckIn.AddDays(-1);
+
+        var result = await sut.CreateAsync(
+            _guestId, new CreateBookingRequest(listing.Id, todayInHonolulu, CheckOut, 2));
+
+        result.IsSuccess.ShouldBeTrue();
+    }
+
+    [Fact]
+    public async Task Cancel_ShouldReturnCannotBeCancelled_WhenCheckInDayHasStartedInListingTimeZone()
+    {
+        var booking = SetupBookingOfGuest(CreateListing(timeZoneId: "Asia/Tokyo"));
+        var sut = CreateSut(TokyoJustAfterMidnightOnCheckInDay);
+
+        var result = await sut.CancelAsync(_guestId, booking.Id);
+
+        result.Error.ShouldBe(BookingErrors.CannotBeCancelled);
+        booking.Status.ShouldBe(BookingStatus.Confirmed);
+    }
+
+    [Fact]
+    public async Task Cancel_ShouldCancel_WhenCheckInDayHasNotStartedInListingTimeZone()
+    {
+        var booking = SetupBookingOfGuest(CreateListing(timeZoneId: "Pacific/Honolulu"));
+        var sut = CreateSut(HonoluluEveningBeforeCheckInDay);
+
+        var result = await sut.CancelAsync(_guestId, booking.Id);
+
+        result.IsSuccess.ShouldBeTrue();
+        booking.Status.ShouldBe(BookingStatus.Cancelled);
+    }
+
     [Fact]
     public async Task Cancel_ShouldCancelAndSave_WhenCheckInIsInTheFuture()
     {
-        var booking = CreateBookingOfGuest();
-        _bookings
-            .Setup(repository => repository.GetByIdForGuestAsync(booking.Id, _guestId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(booking);
+        var booking = SetupBookingOfGuest(CreateListing());
 
         var result = await _sut.CancelAsync(_guestId, booking.Id);
 
@@ -163,11 +237,8 @@ public sealed class BookingServiceTests
     [Fact]
     public async Task Cancel_ShouldReturnCannotBeCancelled_WhenBookingIsAlreadyCancelled()
     {
-        var booking = CreateBookingOfGuest();
-        booking.Cancel(Now, BookingCanceller.Guest);
-        _bookings
-            .Setup(repository => repository.GetByIdForGuestAsync(booking.Id, _guestId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(booking);
+        var booking = SetupBookingOfGuest(CreateListing());
+        booking.Cancel(Now, DateOnly.FromDateTime(Now.UtcDateTime), BookingCanceller.Guest);
 
         var result = await _sut.CancelAsync(_guestId, booking.Id);
 

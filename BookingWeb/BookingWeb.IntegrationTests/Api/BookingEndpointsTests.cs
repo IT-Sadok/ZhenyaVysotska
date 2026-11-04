@@ -5,7 +5,7 @@ using BookingWeb.Application.Bookings;
 using BookingWeb.Application.Listings;
 using BookingWeb.Application.Models;
 using BookingWeb.Domain;
-using BookingWeb.Domain.Models;
+using BookingWeb.Domain.Entities;
 using BookingWeb.Infrastructure.Persistence;
 using BookingWeb.IntegrationTests.Infrastructure;
 using Microsoft.EntityFrameworkCore;
@@ -24,7 +24,7 @@ public sealed class BookingEndpointsTests : ApiTestBase
     private static readonly DateOnly CheckIn = Today.AddDays(10);
     private static readonly DateOnly CheckOut = Today.AddDays(13);
 
-    private async Task<ListingDto> CreateHostListingAsync(decimal pricePerNight = 1000m, int maxGuests = 4)
+    private async Task<HostListingDto> CreateHostListingAsync(decimal pricePerNight = 1000m, int maxGuests = 4)
     {
         using var host = await CreateUserClientAsync("host@test.com", Roles.Host);
         return await CreateListingAsync(host, pricePerNight, maxGuests);

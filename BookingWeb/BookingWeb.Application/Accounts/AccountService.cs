@@ -1,3 +1,4 @@
+using BookingWeb.Application.Common;
 using BookingWeb.Application.Common.Interfaces;
 using BookingWeb.Application.Results;
 using BookingWeb.Domain;
@@ -54,7 +55,9 @@ public sealed class AccountService : IAccountService
         }
 
         var now = _timeProvider.GetUtcNow();
-        var today = DateOnly.FromDateTime(now.UtcDateTime);
+        // Bookings of this user can be in different time zones. Using the earliest date on Earth
+        // errs on the safe side: a stay that may still be in progress somewhere blocks deletion.
+        var today = _timeProvider.GetEarliestDateOnEarth();
 
         await using var transaction = await _unitOfWork.BeginTransactionAsync(ct);
 

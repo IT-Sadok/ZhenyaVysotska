@@ -34,6 +34,7 @@ public static class ResultExtensions
             { Type: ErrorType.Conflict } => Problem(result.Error, StatusCodes.Status409Conflict),
             { Type: ErrorType.Unauthorized } => Problem(result.Error, StatusCodes.Status401Unauthorized),
             { Type: ErrorType.Forbidden } => Problem(result.Error, StatusCodes.Status403Forbidden),
+            { Type: ErrorType.Unavailable } => Problem(result.Error, StatusCodes.Status503ServiceUnavailable),
             _ => Problem(result.Error, StatusCodes.Status400BadRequest)
         };
     }

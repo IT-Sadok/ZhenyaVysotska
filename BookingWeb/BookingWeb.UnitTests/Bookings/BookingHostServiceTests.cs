@@ -1,7 +1,8 @@
 using BookingWeb.Application.Bookings;
 using BookingWeb.Application.Common.Interfaces;
 using BookingWeb.Application.Models;
-using BookingWeb.Domain.Models;
+using BookingWeb.Domain.Entities;
+using BookingWeb.Domain.ValueObjects;
 using BookingWeb.UnitTests.TestDoubles;
 using Moq;
 using Shouldly;
@@ -23,9 +24,18 @@ public sealed class BookingServiceHostTests
         _sut = new BookingService(_bookings.Object, _listings.Object, _unitOfWork.Object, new FixedTimeProvider(Now));
     }
 
-    private Booking SetupBookingOnHostListing(Guid listingId)
+    private Booking SetupBookingOnHostListing(Guid? listingId = null)
     {
-        var booking = Booking.Create(listingId, Guid.NewGuid(), new DateOnly(2026, 3, 10), new DateOnly(2026, 3, 12), 2, 1000m, Now);
+        var listing = Listing.Create(
+            _hostId, "Loft", null, "UA", "Kyiv", "Kyiv", "Khreshchatyk 1",
+            location: new GeoPoint(50.4501, 30.5234), publicLocation: new GeoPoint(50.4530, 30.5260),
+            "Europe/Kyiv", 1000m, 4, Now);
+        _listings
+            .Setup(repository => repository.GetByIdAsync(listing.Id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(listing);
+
+        var booking = Booking.Create(
+            listingId ?? listing.Id, Guid.NewGuid(), new DateOnly(2026, 3, 10), new DateOnly(2026, 3, 12), 2, 1000m, Now);
         _bookings
             .Setup(repository => repository.GetByIdForHostAsync(booking.Id, _hostId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(booking);
@@ -35,10 +45,9 @@ public sealed class BookingServiceHostTests
     [Fact]
     public async Task CancelByHost_ShouldCancelAsHost_WhenBookingIsOnHostListing()
     {
-        var listingId = Guid.NewGuid();
-        var booking = SetupBookingOnHostListing(listingId);
+        var booking = SetupBookingOnHostListing();
 
-        var result = await _sut.CancelByHostAsync(_hostId, listingId, booking.Id);
+        var result = await _sut.CancelByHostAsync(_hostId, booking.ListingId, booking.Id);
 
         result.IsSuccess.ShouldBeTrue();
         booking.Status.ShouldBe(BookingStatus.Cancelled);

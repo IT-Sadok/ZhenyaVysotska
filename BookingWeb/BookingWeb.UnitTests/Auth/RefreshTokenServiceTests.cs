@@ -1,7 +1,7 @@
 using BookingWeb.Application.Auth;
 using BookingWeb.Application.Common.Interfaces;
 using BookingWeb.Application.Common.Settings;
-using BookingWeb.Domain.Models;
+using BookingWeb.Domain.Entities;
 using BookingWeb.UnitTests.TestDoubles;
 using Microsoft.Extensions.Options;
 using Moq;
@@ -37,7 +37,7 @@ public sealed class RefreshTokenServiceTests
     }
 
     [Fact]
-    public async Task Issue_ShouldStoreHashInsteadOfRawToken()
+    public async Task Issue_ShouldStoreHashInsteadOfRawToken_WhenTokenIsIssued()
     {
         RefreshToken? addedToken = null;
         _repository
@@ -51,7 +51,7 @@ public sealed class RefreshTokenServiceTests
     }
 
     [Fact]
-    public async Task Issue_ShouldSetExpiryFromSettings()
+    public async Task Issue_ShouldSetExpiryFromSettings_WhenTokenIsIssued()
     {
         RefreshToken? addedToken = null;
         _repository
@@ -170,17 +170,17 @@ public sealed class RefreshTokenServiceTests
     }
 
     [Fact]
-    public async Task Revoke_ShouldDoNothing_WhenTokenIsUnknown()
+    public async Task Revoke_ShouldNotThrow_WhenTokenIsUnknown()
     {
         _repository
             .Setup(repository => repository.GetByHashAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync((RefreshToken?)null);
 
-        await _sut.RevokeAsync("unknown-token");
+        await Should.NotThrowAsync(() => _sut.RevokeAsync("unknown-token"));
     }
 
     [Fact]
-    public async Task RevokeAllForUser_ShouldPassCurrentTimeToRepository()
+    public async Task RevokeAllForUser_ShouldPassCurrentTimeToRepository_WhenCalled()
     {
         var userId = Guid.NewGuid();
 

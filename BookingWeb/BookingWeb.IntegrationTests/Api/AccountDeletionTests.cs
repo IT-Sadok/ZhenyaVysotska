@@ -6,7 +6,7 @@ using BookingWeb.Application.Auth.Requests;
 using BookingWeb.Application.Listings;
 using BookingWeb.Application.Models;
 using BookingWeb.Domain;
-using BookingWeb.Domain.Models;
+using BookingWeb.Domain.Entities;
 using BookingWeb.Infrastructure.Persistence;
 using BookingWeb.IntegrationTests.Infrastructure;
 using Microsoft.EntityFrameworkCore;
@@ -114,7 +114,7 @@ public sealed class AccountDeletionTests : ApiTestBase
 
         (await DeleteAccountAsync(host)).EnsureSuccessStatusCode();
 
-        var page = await Client.GetFromJsonAsync<PagedResult<ListingDto>>("/api/listings");
+        var page = await Client.GetFromJsonAsync<PagedResult<PublicListingDto>>("/api/listings");
         page!.TotalCount.ShouldBe(0);
     }
 

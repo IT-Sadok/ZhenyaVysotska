@@ -1,8 +1,10 @@
 using BookingWeb.Application.Bookings.Requests;
+using BookingWeb.Application.Common;
 using BookingWeb.Application.Common.Interfaces;
 using BookingWeb.Application.Models;
 using BookingWeb.Application.Results;
-using BookingWeb.Domain.Models;
+using BookingWeb.Domain.Entities;
+using Mapster;
 
 namespace BookingWeb.Application.Bookings;
 
@@ -39,6 +41,13 @@ public sealed class BookingService : IBookingService
             return BookingErrors.OwnListing;
         }
 
+        // The validator only rejects dates that are in the past everywhere on Earth;
+        // the exact check needs the listing's time zone.
+        if (request.CheckIn < _timeProvider.GetLocalDate(listing.TimeZoneId))
+        {
+            return BookingErrors.CheckInInPast;
+        }
+
         if (request.Guests > listing.MaxGuests)
         {
             return BookingErrors.TooManyGuests(listing.MaxGuests);
@@ -60,23 +69,20 @@ public sealed class BookingService : IBookingService
 
         _bookings.Add(booking);
 
-        try
-        { 
-            await _unitOfWork.SaveChangesAsync(ct);
-        }
-        catch (BookingOverlapException)
+        var saveResult = await _unitOfWork.SaveChangesAsync(ct);
+        if (saveResult.IsFailure)
         {
-            return BookingErrors.DatesUnavailable;
+            return saveResult.Error;
         }
 
-        return booking.ToDto();
+        return booking.Adapt<BookingDto>();
     }
 
     public async Task<Result<PagedResult<BookingDto>>> GetMineAsync(
         Guid guestId, PageRequest request, CancellationToken ct = default)
     {
         var page = await _bookings.GetForGuestAsync(guestId, request, ct);
-        var items = page.Items.Select(booking => booking.ToDto()).ToList();
+        var items = page.Items.Adapt<List<BookingDto>>();
         
         return new PagedResult<BookingDto>(items, page.TotalCount, page.Page, page.PageSize);
     }
@@ -90,7 +96,7 @@ public sealed class BookingService : IBookingService
             return BookingErrors.NotFound;
         }
 
-        return booking.ToDto();
+        return booking.Adapt<BookingDto>();
     }
     
     public async Task<Result<PagedResult<BookingDto>>> GetForHostListingAsync(
@@ -104,7 +110,7 @@ public sealed class BookingService : IBookingService
 
         var page = await _bookings.GetForListingAsync(listing.Id, request, ct);
 
-        var items = page.Items.Select(booking => booking.ToDto()).ToList();
+        var items = page.Items.Adapt<List<BookingDto>>();
         return new PagedResult<BookingDto>(items, page.TotalCount, page.Page, page.PageSize);
     }
 
@@ -117,16 +123,7 @@ public sealed class BookingService : IBookingService
             return BookingErrors.NotFound;
         }
 
-        var now = _timeProvider.GetUtcNow();
-        if (!booking.CanBeCancelledAt(now))
-        {
-            return BookingErrors.CannotBeCancelled;
-        }
-
-        booking.Cancel(now, BookingCanceller.Guest);
-        await _unitOfWork.SaveChangesAsync(ct);
-
-        return booking.ToDto();
+        return await CancelAsync(booking, BookingCanceller.Guest, ct);
     }
     
     public async Task<Result<BookingDto>> CancelByHostAsync(
@@ -138,15 +135,28 @@ public sealed class BookingService : IBookingService
             return BookingErrors.NotFound;
         }
 
-        var now = _timeProvider.GetUtcNow();
-        if (!booking.CanBeCancelledAt(now))
+        return await CancelAsync(booking, BookingCanceller.Host, ct);
+    }
+
+    private async Task<Result<BookingDto>> CancelAsync(
+        Booking booking, BookingCanceller canceller, CancellationToken ct)
+    {
+        // "Before the check-in day" is measured in the listing's time zone, so we need the listing.
+        var listing = await _listings.GetByIdAsync(booking.ListingId, ct);
+        if (listing is null)
+        {
+            return BookingErrors.ListingNotFound;
+        }
+
+        var listingToday = _timeProvider.GetLocalDate(listing.TimeZoneId);
+        if (!booking.CanBeCancelledOn(listingToday))
         {
             return BookingErrors.CannotBeCancelled;
         }
 
-        booking.Cancel(now, BookingCanceller.Host);
+        booking.Cancel(_timeProvider.GetUtcNow(), listingToday, canceller);
         await _unitOfWork.SaveChangesAsync(ct);
 
-        return booking.ToDto();
+        return booking.Adapt<BookingDto>();
     }
 }

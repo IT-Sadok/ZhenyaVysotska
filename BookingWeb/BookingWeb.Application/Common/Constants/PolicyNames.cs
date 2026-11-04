@@ -1,4 +1,4 @@
-namespace BookingWeb.Application.Constants;
+namespace BookingWeb.Application.Common.Constants;
 
 public static class PolicyNames
 {

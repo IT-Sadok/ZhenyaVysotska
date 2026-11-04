@@ -3,7 +3,7 @@ using BookingWeb.Application.Auth;
 using BookingWeb.Application.Common.Interfaces;
 using BookingWeb.Application.Results;
 using BookingWeb.Domain;
-using BookingWeb.Domain.Models;
+using BookingWeb.Domain.Entities;
 using BookingWeb.UnitTests.TestDoubles;
 using Moq;
 using Shouldly;
@@ -13,7 +13,7 @@ namespace BookingWeb.UnitTests.Accounts;
 public sealed class AccountServiceTests
 {
     private static readonly DateTimeOffset Now = new(2026, 3, 1, 9, 0, 0, TimeSpan.Zero);
-    private static readonly DateOnly Today = new(2026, 3, 1);
+    private static readonly DateOnly EarliestToday = new(2026, 2, 28);
     private static readonly DeleteAccountRequest Request = new("Password1!");
 
     private readonly Guid _userId = Guid.NewGuid();
@@ -115,7 +115,7 @@ public sealed class AccountServiceTests
     public async Task Delete_ShouldReturnConflictWithoutCommit_WhenGuestHasUpcomingBookings()
     {
         _bookings
-            .Setup(repository => repository.HasUpcomingForGuestAsync(_userId, Today, It.IsAny<CancellationToken>()))
+            .Setup(repository => repository.HasUpcomingForGuestAsync(_userId, EarliestToday, It.IsAny<CancellationToken>()))
             .ReturnsAsync(true);
 
         var result = await _sut.DeleteAsync(_userId, Request);
@@ -130,7 +130,7 @@ public sealed class AccountServiceTests
     {
         SetupUser(Roles.Host);
         _bookings
-            .Setup(repository => repository.HasUpcomingForHostAsync(_userId, Today, It.IsAny<CancellationToken>()))
+            .Setup(repository => repository.HasUpcomingForHostAsync(_userId, EarliestToday, It.IsAny<CancellationToken>()))
             .ReturnsAsync(true);
 
         var result = await _sut.DeleteAsync(_userId, Request);

@@ -196,7 +196,7 @@ public sealed class AuthServiceTests
     }
 
     [Fact]
-    public async Task Logout_ShouldRevokeTokenAndSaveChanges()
+    public async Task Logout_ShouldRevokeTokenAndSaveChanges_WhenCalled()
     {
         await _sut.LogoutAsync("token");
 
