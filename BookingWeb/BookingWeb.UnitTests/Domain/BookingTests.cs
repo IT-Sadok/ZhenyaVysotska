@@ -81,4 +81,77 @@ public sealed class BookingTests
 
         Should.Throw<InvalidOperationException>(() => booking.Cancel(At(CheckIn.AddDays(-4)), BookingCanceller.Guest));
     }
+
+    // The existing booking is May 10–13
+    [Theory]
+    [InlineData(10, 13)] // same dates
+    [InlineData(8, 11)]  // overlaps the start
+    [InlineData(12, 15)] // overlaps the end
+    [InlineData(11, 12)] // inside the booking
+    [InlineData(5, 20)]  // covers the whole booking
+    public void Blocks_ShouldReturnTrue_WhenRequestedStayOverlapsConfirmedBooking(int checkInDay, int checkOutDay)
+    {
+        var booking = CreateBooking();
+
+        Blocks(booking, May(checkInDay), May(checkOutDay)).ShouldBeTrue();
+    }
+
+    [Theory]
+    [InlineData(8, 10)]  // checks out on the booking's check-in day
+    [InlineData(13, 15)] // checks in on the booking's check-out day
+    [InlineData(1, 5)]   // completely before
+    [InlineData(20, 25)] // completely after
+    public void Blocks_ShouldReturnFalse_WhenRequestedStayDoesNotOverlap(int checkInDay, int checkOutDay)
+    {
+        var booking = CreateBooking();
+
+        Blocks(booking, May(checkInDay), May(checkOutDay)).ShouldBeFalse();
+    }
+
+    [Fact]
+    public void Blocks_ShouldReturnFalse_WhenOverlappingBookingIsCancelled()
+    {
+        var booking = CreateBooking();
+        booking.Cancel(At(CheckIn.AddDays(-5)), BookingCanceller.Guest);
+
+        Blocks(booking, CheckIn, CheckOut).ShouldBeFalse();
+    }
+
+    [Theory]
+    [InlineData(1)]  // before check-in
+    [InlineData(10)] // check-in day
+    [InlineData(12)] // stay in progress
+    public void IsUpcoming_ShouldReturnTrue_WhenConfirmedBookingHasNotEnded(int todayDay)
+    {
+        var booking = CreateBooking();
+
+        IsUpcoming(booking, May(todayDay)).ShouldBeTrue();
+    }
+
+    [Theory]
+    [InlineData(13)] // check-out day
+    [InlineData(20)] // after check-out
+    public void IsUpcoming_ShouldReturnFalse_WhenBookingHasEnded(int todayDay)
+    {
+        var booking = CreateBooking();
+
+        IsUpcoming(booking, May(todayDay)).ShouldBeFalse();
+    }
+
+    [Fact]
+    public void IsUpcoming_ShouldReturnFalse_WhenBookingIsCancelled()
+    {
+        var booking = CreateBooking();
+        booking.Cancel(At(CheckIn.AddDays(-5)), BookingCanceller.Guest);
+
+        IsUpcoming(booking, CheckIn.AddDays(-1)).ShouldBeFalse();
+    }
+
+    private static DateOnly May(int day) => new(2026, 5, day);
+    
+    private static bool Blocks(Booking booking, DateOnly checkIn, DateOnly checkOut) =>
+        Booking.Blocks(checkIn, checkOut).Compile()(booking);
+
+    private static bool IsUpcoming(Booking booking, DateOnly today) =>
+        Booking.IsUpcoming(today).Compile()(booking);
 }

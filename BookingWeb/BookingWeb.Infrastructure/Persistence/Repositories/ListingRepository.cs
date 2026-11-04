@@ -120,7 +120,7 @@ public sealed class ListingRepository : IListingRepository
         if (criteria.Stay is { } stay)
         {
             var bookedListingIds = _db.Bookings
-                .ThatBlock(stay.CheckIn, stay.CheckOut)
+                .Where(Booking.Blocks(stay.CheckIn, stay.CheckOut))
                 .Select(b => b.ListingId);
 
             query = query.Where(l => !bookedListingIds.Contains(l.Id));

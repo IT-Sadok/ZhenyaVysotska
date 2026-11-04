@@ -55,31 +55,31 @@ public sealed class BookingRepository : IBookingRepository
     {
         return _db.Bookings
             .Where(b => b.ListingId == listingId)
-            .ThatBlock(checkIn, checkOut)
+            .Where(Booking.Blocks(checkIn, checkOut))
             .AnyAsync(ct);
     }
 
     public Task<bool> HasUpcomingForListingAsync(Guid listingId, DateOnly today, CancellationToken ct = default)
     {
-        return _db.Bookings.AnyAsync(
-            b=> b.ListingId == listingId
-                && b.Status == BookingStatus.Confirmed
-                && b.CheckOut > today, ct);
+        return _db.Bookings
+            .Where(b => b.ListingId == listingId)
+            .Where(Booking.IsUpcoming(today))
+            .AnyAsync(ct);
     }
-    
+
     public Task<bool> HasUpcomingForGuestAsync(Guid guestId, DateOnly today, CancellationToken ct = default)
     {
-        return _db.Bookings.AnyAsync(
-            b => b.GuestId == guestId
-                 && b.Status == BookingStatus.Confirmed
-                 && b.CheckOut > today, ct);
+        return _db.Bookings
+            .Where(b => b.GuestId == guestId)
+            .Where(Booking.IsUpcoming(today))
+            .AnyAsync(ct);
     }
 
     public Task<bool> HasUpcomingForHostAsync(Guid hostId, DateOnly today, CancellationToken ct = default)
     {
-        return _db.Bookings.AnyAsync(
-            b => b.Status == BookingStatus.Confirmed
-                        && b.CheckOut > today
-                        && _db.Listings.Any(l => l.Id == b.ListingId && l.HostId == hostId), ct);
+        return _db.Bookings
+            .Where(b => _db.Listings.Any(l => l.Id == b.ListingId && l.HostId == hostId))
+            .Where(Booking.IsUpcoming(today))
+            .AnyAsync(ct);
     }
 }

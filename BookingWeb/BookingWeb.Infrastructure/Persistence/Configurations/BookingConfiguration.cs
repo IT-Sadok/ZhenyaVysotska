@@ -42,10 +42,6 @@ public sealed class BookingConfiguration : IEntityTypeConfiguration<Booking>
             .HasForeignKey(b => b.GuestId)
             .OnDelete(DeleteBehavior.Restrict);
 
-        // Both indexes match the ORDER BY "CheckIn" DESC, "Id" of the paged queries
-        // (GetForListingAsync / GetForGuestAsync), so Postgres reads rows already sorted
-        // and stops after one page instead of sorting all of them.
-        // The listing index also covers the FK "ListingId", so EF drops its separate FK index.
         builder.HasIndex(b => new { b.ListingId, b.CheckIn, b.Id })
             .IsDescending(false, true, false);
 

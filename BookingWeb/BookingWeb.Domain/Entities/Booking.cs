@@ -1,6 +1,19 @@
+using System.Linq.Expressions;
 using Ardalis.GuardClauses;
 
 namespace BookingWeb.Domain.Entities;
+
+public enum BookingStatus
+{
+    Confirmed,
+    Cancelled
+}
+
+public enum BookingCanceller
+{
+    Guest,
+    Host
+}
 
 public sealed class Booking
 {
@@ -53,6 +66,15 @@ public sealed class Booking
             CreatedAtUtc = createdAtUtc
         };
     }
+    
+    public static Expression<Func<Booking, bool>> Blocks(DateOnly checkIn, DateOnly checkOut) =>
+        booking => booking.Status == BookingStatus.Confirmed
+                   && booking.CheckIn < checkOut
+                   && checkIn < booking.CheckOut;
+
+    public static Expression<Func<Booking, bool>> IsUpcoming(DateOnly today) =>
+        booking => booking.Status == BookingStatus.Confirmed
+                   && booking.CheckOut > today;
 
     public bool CanBeCancelledAt(DateTimeOffset nowUtc)
     {
@@ -72,16 +94,4 @@ public sealed class Booking
         CancelledAtUtc = nowUtc;
         CancelledBy = canceller;
     }
-}
-
-public enum BookingStatus
-{
-    Confirmed,
-    Cancelled
-}
-
-public enum BookingCanceller
-{
-    Guest,
-    Host
 }
