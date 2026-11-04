@@ -16,6 +16,9 @@ public static class BookingErrors
     public static readonly Error DatesUnavailable =
         new("Booking.DatesUnavailable", "The listing is already booked for some of these nights.", ErrorType.Conflict);
 
+    public static readonly Error CheckInInPast =
+        new("Booking.CheckInInPast", "Check-in can't be earlier than today in the listing's time zone.");
+
     public static readonly Error CannotBeCancelled =
         new("Booking.CannotBeCancelled",
             "Only a confirmed booking can be cancelled, and only before the check-in day.",

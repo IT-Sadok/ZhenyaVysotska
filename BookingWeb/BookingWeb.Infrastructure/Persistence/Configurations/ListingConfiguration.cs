@@ -38,6 +38,7 @@ public sealed class ListingConfiguration : IEntityTypeConfiguration<Listing>
         builder.Property(l => l.City).HasMaxLength(100).IsRequired();
         builder.Property(l => l.Address).HasMaxLength(300).IsRequired();
         builder.Property(l => l.PricePerNight).HasPrecision(18, 2);
+        builder.Property(l => l.TimeZoneId).HasMaxLength(Listing.TimeZoneIdMaxLength).IsRequired();
 
         builder.ComplexProperty(l => l.Location, location =>
         {

@@ -10,5 +10,6 @@ public sealed record PublicListingDto(
     string City,
     double Latitude,
     double Longitude,
+    string TimeZoneId,
     decimal PricePerNight,
     int MaxGuests);

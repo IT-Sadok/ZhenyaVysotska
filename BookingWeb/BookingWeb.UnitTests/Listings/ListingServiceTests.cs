@@ -22,23 +22,26 @@ public sealed class ListingServiceTests
     private readonly Mock<IBookingRepository> _bookings = new();
     private readonly Mock<IUnitOfWork> _unitOfWork = new();
     private readonly FakeLocationObfuscator _obfuscator = new();
+    private readonly FakeTimeZoneResolver _timeZoneResolver = new();
     private readonly ListingService _sut;
 
     public ListingServiceTests()
     {
-        _sut = new ListingService(_listings.Object, _bookings.Object, _unitOfWork.Object, new FixedTimeProvider(Now), _obfuscator);
+        _sut = new ListingService(_listings.Object, _bookings.Object, _unitOfWork.Object, new FixedTimeProvider(Now), _obfuscator, _timeZoneResolver);
     }
 
-    private Listing NewListing(string title = "Loft", string? description = null, decimal price = 1000m, int guests = 2)
+    private Listing NewListing(
+        string title = "Loft", string? description = null, decimal price = 1000m, int guests = 2,
+        string timeZoneId = "Europe/Kyiv")
     {
         return Listing.Create(
             _hostId, title, description, "UA", "Kyiv", "Kyiv", "Khreshchatyk 1",
-            location: KyivExact, publicLocation: KyivPublic, price, guests, Now);
+            location: KyivExact, publicLocation: KyivPublic, timeZoneId, price, guests, Now);
     }
 
-    private Listing CreateOwnListing()
+    private Listing CreateOwnListing(string timeZoneId = "Europe/Kyiv")
     {
-        var listing = NewListing();
+        var listing = NewListing(timeZoneId: timeZoneId);
         _listings
             .Setup(repository => repository.
                 GetByIdForHostAsync(listing.Id, _hostId, It.IsAny<CancellationToken>()))
@@ -55,7 +58,7 @@ public sealed class ListingServiceTests
 
     private static PublicListingDto PublicDto(Guid? id = null) =>
         new(id ?? Guid.NewGuid(), Guid.NewGuid(), "Loft", null, "UA", null, "Kyiv",
-            KyivPublic.Latitude, KyivPublic.Longitude, 1000m, 2);
+            KyivPublic.Latitude, KyivPublic.Longitude, "Europe/Kyiv", 1000m, 2);
 
     private static List<ListingMarkerDto> Markers(int count) =>
         Enumerable.Range(0, count)
@@ -94,6 +97,17 @@ public sealed class ListingServiceTests
             new GeoPoint(OdesaExact.Latitude + FakeLocationObfuscator.LatitudeOffset, OdesaExact.Longitude));
         added.CountryCode.ShouldBe("UA");
         added.Region.ShouldBe("Odesa Oblast");
+    }
+
+    [Fact]
+    public async Task Create_ShouldStoreTimeZoneResolvedFromExactLocation_WhenRequestIsValid()
+    {
+        _timeZoneResolver.TimeZoneId = "Europe/Warsaw";
+
+        var result = await _sut.CreateAsync(_hostId, CreateRequest());
+
+        _timeZoneResolver.Calls.ShouldBe([OdesaExact]);
+        result.Value.TimeZoneId.ShouldBe("Europe/Warsaw");
     }
 
     [Fact]
@@ -139,9 +153,22 @@ public sealed class ListingServiceTests
         await _sut.UpdateAsync(_hostId, listing.Id, request);
 
         _obfuscator.Calls.ShouldBeEmpty();
+        _timeZoneResolver.Calls.ShouldBeEmpty();
         listing.Location.ShouldBe(KyivExact);
         listing.PublicLocation.ShouldBe(KyivPublic);
         listing.Title.ShouldBe("Sea view");
+    }
+
+    [Fact]
+    public async Task Update_ShouldResolveTimeZoneAgain_WhenCoordinatesChanged()
+    {
+        var listing = CreateOwnListing();
+        _timeZoneResolver.TimeZoneId = "Europe/Warsaw";
+
+        await _sut.UpdateAsync(_hostId, listing.Id, CreateRequest());
+
+        _timeZoneResolver.Calls.ShouldBe([OdesaExact]);
+        listing.TimeZoneId.ShouldBe("Europe/Warsaw");
     }
 
     [Fact]
@@ -170,6 +197,20 @@ public async Task Delete_ShouldReturnConflictAndKeepActive_WhenListingHasUpcomin
 
         result.Error.ShouldBe(ListingErrors.HasUpcomingBookings);
         listing.IsActive.ShouldBeTrue();
+    }
+
+    [Fact]
+    public async Task Delete_ShouldCheckUpcomingBookingsAgainstListingLocalDate_WhenListingIsInAnotherTimeZone()
+    {
+        // Now is 09:00 UTC on Mar 1, which is still 23:00 on Feb 28 in Honolulu (UTC-10).
+        var listing = CreateOwnListing(timeZoneId: "Pacific/Honolulu");
+        var honoluluToday = new DateOnly(2026, 2, 28);
+
+        await _sut.DeleteAsync(_hostId, listing.Id);
+
+        _bookings.Verify(
+            repository => repository.HasUpcomingForListingAsync(listing.Id, honoluluToday, It.IsAny<CancellationToken>()),
+            Times.Once);
     }
     
     [Fact]

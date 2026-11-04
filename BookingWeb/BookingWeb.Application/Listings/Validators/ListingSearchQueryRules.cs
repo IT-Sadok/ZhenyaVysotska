@@ -50,7 +50,7 @@ internal sealed class ListingSearchQueryRules : AbstractValidator<IListingSearch
             .WithMessage("CheckOut is required when CheckIn is given.");
 
         RuleFor(x => x.CheckIn)
-            .Must(checkIn => checkIn >= timeProvider.GetUtcNowDateOnly())
+            .Must(checkIn => checkIn >= timeProvider.GetEarliestDateOnEarth())
             .When(x => x.CheckIn is not null)
             .WithMessage("CheckIn can't be in the past.");
 

@@ -105,10 +105,18 @@ public sealed class MapSearchRequestValidatorTests
             .ShouldNotHaveAnyValidationErrors();
     }
 
+    // Now is 09:00 UTC on Mar 1 = 21:00 on Feb 28 in UTC-12, so Feb 28 is still "today" somewhere.
     [Fact]
-    public void Validate_ShouldFail_WhenCheckInIsInThePast()
+    public void Validate_ShouldFail_WhenCheckInIsInThePastEverywhereOnEarth()
+    {
+        _validator.TestValidate(Valid() with { CheckIn = Today.AddDays(-2), CheckOut = Today.AddDays(2) })
+            .ShouldHaveValidationErrorFor(x => x.CheckIn);
+    }
+
+    [Fact]
+    public void Validate_ShouldPass_WhenCheckInIsYesterdayInUtcButTodaySomewhereOnEarth()
     {
         _validator.TestValidate(Valid() with { CheckIn = Today.AddDays(-1), CheckOut = Today.AddDays(2) })
-            .ShouldHaveValidationErrorFor(x => x.CheckIn);
+            .ShouldNotHaveValidationErrorFor(x => x.CheckIn);
     }
 }

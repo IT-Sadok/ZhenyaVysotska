@@ -46,6 +46,31 @@ public sealed class ListingEndpointsTests : ApiTestBase
     }
 
     [Fact]
+    public async Task CreateListing_ShouldResolveTimeZoneFromCoordinates_WhenUserIsHost()
+    {
+        using var host = await CreateUserClientAsync("host@test.com", Roles.Host);
+
+        var listing = await CreateListingAsync(host);
+
+        listing.TimeZoneId.ShouldBe("Europe/Kyiv");
+    }
+
+    [Fact]
+    public async Task UpdateListing_ShouldResolveTimeZoneAgain_WhenCoordinatesMoveToAnotherZone()
+    {
+        using var host = await CreateUserClientAsync("host@test.com", Roles.Host);
+        var listing = await CreateListingAsync(host);
+        var tokyo = new ListingRequest(
+            "Loft", "Cozy loft", "JP", "Tokyo", "Tokyo", "Shibuya 1", 35.6595, 139.7005, 1000m, 4);
+
+        var response = await host.PutAsJsonAsync($"/api/listings/{listing.Id}", tokyo);
+
+        await response.ShouldHaveStatusAsync(HttpStatusCode.OK);
+        var updated = (await response.Content.ReadFromJsonAsync<HostListingDto>())!;
+        updated.TimeZoneId.ShouldBe("Asia/Tokyo");
+    }
+
+    [Fact]
     public async Task CreateListing_ShouldReturnForbidden_WhenUserIsOnlyClient()
     {
         using var client = await CreateUserClientAsync("client@test.com", Roles.Client);

@@ -17,7 +17,7 @@ public sealed class MappingConfigTests
     private static Listing CreateListing(Guid? hostId = null, string? description = "Cozy", string? region = "Kyiv") =>
         Listing.Create(
             hostId ?? Guid.NewGuid(), "Loft", description, "UA", region, "Kyiv", "Khreshchatyk 1",
-            location: Exact, publicLocation: Public, 1500m, 2, DateTimeOffset.UtcNow);
+            location: Exact, publicLocation: Public, "Europe/Kyiv", 1500m, 2, DateTimeOffset.UtcNow);
 
     [Fact]
     public void RegisterMappings_ShouldProduceValidConfig_WhenCompiled()
@@ -91,6 +91,7 @@ public sealed class MappingConfigTests
         dto.Longitude.ShouldBe(Public.Longitude);
         dto.PricePerNight.ShouldBe(1500m);
         dto.MaxGuests.ShouldBe(2);
+        dto.TimeZoneId.ShouldBe("Europe/Kyiv");
     }
 
     [Fact]
@@ -105,6 +106,7 @@ public sealed class MappingConfigTests
         dto.Longitude.ShouldBe(Exact.Longitude);
         dto.PublicLatitude.ShouldBe(Public.Latitude);
         dto.PublicLongitude.ShouldBe(Public.Longitude);
+        dto.TimeZoneId.ShouldBe("Europe/Kyiv");
         dto.IsActive.ShouldBeTrue();
         dto.CreatedAtUtc.ShouldBe(listing.CreatedAtUtc);
     }
@@ -192,7 +194,7 @@ public sealed class MappingConfigTests
             Guid.NewGuid(), Guid.NewGuid(), new DateOnly(2026, 3, 10), new DateOnly(2026, 3, 13), 2, 1000m,
             new DateTimeOffset(2026, 3, 1, 9, 0, 0, TimeSpan.Zero));
         var cancelledAt = new DateTimeOffset(2026, 3, 2, 9, 0, 0, TimeSpan.Zero);
-        booking.Cancel(cancelledAt, BookingCanceller.Host);
+        booking.Cancel(cancelledAt, DateOnly.FromDateTime(cancelledAt.UtcDateTime), BookingCanceller.Host);
 
         var dto = booking.Adapt<BookingDto>();
 

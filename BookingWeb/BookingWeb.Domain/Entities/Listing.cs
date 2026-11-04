@@ -6,6 +6,7 @@ namespace BookingWeb.Domain.Entities;
 public sealed class Listing
 {
     public const int CountryCodeLength = 2;
+    public const int TimeZoneIdMaxLength = 64;
 
     public Guid Id { get; private set; }
     public Guid HostId { get; private set; }
@@ -17,6 +18,7 @@ public sealed class Listing
     public string Address { get; private set; } = null!;
     public GeoPoint Location { get; private set; } = null!;
     public GeoPoint PublicLocation { get; private set; } = null!;
+    public string TimeZoneId { get; private set; } = null!;
     public decimal PricePerNight { get; private set; }
     public int MaxGuests { get; private set; }
     public bool IsActive { get; private set; }
@@ -34,6 +36,7 @@ public sealed class Listing
         string address,
         GeoPoint location,
         GeoPoint publicLocation,
+        string timeZoneId,
         decimal pricePerNight,
         int maxGuests,
         DateTimeOffset createdAtUtc)
@@ -49,7 +52,7 @@ public sealed class Listing
         };
 
         listing.Update(title, description, countryCode, region, city, address, pricePerNight, maxGuests);
-        listing.SetLocation(location, publicLocation);
+        listing.SetLocation(location, publicLocation, timeZoneId);
         return listing;
     }
 
@@ -84,10 +87,15 @@ public sealed class Listing
         MaxGuests = maxGuests;
     }
     
-    public void SetLocation(GeoPoint location, GeoPoint publicLocation)
+    public void SetLocation(GeoPoint location, GeoPoint publicLocation, string timeZoneId)
     {
         Guard.Against.Null(location);
         Guard.Against.Null(publicLocation);
+        Guard.Against.NullOrWhiteSpace(timeZoneId);
+        if (!TimeZoneInfo.TryFindSystemTimeZoneById(timeZoneId, out _))
+        {
+            throw new ArgumentException($"Unknown time zone '{timeZoneId}'.", nameof(timeZoneId));
+        }
         if (publicLocation == location)
         {
             throw new ArgumentException(
@@ -96,6 +104,7 @@ public sealed class Listing
 
         Location = location;
         PublicLocation = publicLocation;
+        TimeZoneId = timeZoneId;
     }
 
     public void Deactivate()

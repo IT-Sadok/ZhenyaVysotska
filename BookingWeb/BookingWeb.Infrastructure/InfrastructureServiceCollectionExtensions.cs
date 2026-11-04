@@ -10,6 +10,7 @@ using BookingWeb.Infrastructure.Geocoding;
 using BookingWeb.Infrastructure.Identity;
 using BookingWeb.Infrastructure.Persistence;
 using BookingWeb.Infrastructure.Persistence.Repositories;
+using BookingWeb.Infrastructure.TimeZones;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
@@ -32,6 +33,8 @@ public static class InfrastructureServiceCollectionExtensions
         services.AddTokenServices(configuration);
         services.AddAuthenticationAndAuthorization(configuration);
         services.AddGeocoding(configuration);
+        
+        services.AddSingleton<ITimeZoneResolver, GeoTimeZoneResolver>();
  
         return services;
     }

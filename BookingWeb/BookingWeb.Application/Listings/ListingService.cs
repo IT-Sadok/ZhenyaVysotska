@@ -16,19 +16,22 @@ public sealed class ListingService : IListingService
     private readonly IUnitOfWork _unitOfWork;
     private readonly TimeProvider _timeProvider;
     private readonly ILocationObfuscator _locationObfuscator;
+    private readonly ITimeZoneResolver _timeZoneResolver;
 
     public ListingService(
         IListingRepository listingRepository, 
         IBookingRepository bookingRepository,
         IUnitOfWork unitOfWork,
         TimeProvider timeProvider,
-        ILocationObfuscator locationObfuscator)
+        ILocationObfuscator locationObfuscator,
+        ITimeZoneResolver timeZoneResolver)
     {
         _listingRepository = listingRepository;
         _bookingRepository = bookingRepository;
         _unitOfWork = unitOfWork;
         _timeProvider = timeProvider;
         _locationObfuscator = locationObfuscator;
+        _timeZoneResolver = timeZoneResolver;
     }
     
     public async Task<Result<HostListingDto>> CreateAsync(
@@ -46,6 +49,7 @@ public sealed class ListingService : IListingService
             request.Address,
             location: location,
             publicLocation: _locationObfuscator.Obfuscate(location),
+            timeZoneId: _timeZoneResolver.Resolve(location),
             request.PricePerNight,
             request.MaxGuests,
             _timeProvider.GetUtcNow());
@@ -120,7 +124,10 @@ public sealed class ListingService : IListingService
         var location = ToGeoPoint(request);
         if (location != listing.Location)
         {
-            listing.SetLocation(location, _locationObfuscator.Obfuscate(location));
+            listing.SetLocation(
+                location,
+                _locationObfuscator.Obfuscate(location),
+                _timeZoneResolver.Resolve(location));
         }
         
         await _unitOfWork.SaveChangesAsync(ct);
@@ -137,7 +144,7 @@ public sealed class ListingService : IListingService
             return ListingErrors.NotFound;
         }
 
-        var today = _timeProvider.GetUtcNowDateOnly();
+        var today = _timeProvider.GetLocalDate(listing.TimeZoneId);
         if (await _bookingRepository.HasUpcomingForListingAsync(listing.Id, today, ct))
         {
             return ListingErrors.HasUpcomingBookings;

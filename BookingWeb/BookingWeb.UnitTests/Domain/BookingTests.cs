@@ -45,19 +45,30 @@ public sealed class BookingTests
     }
 
     [Fact]
-    public void CanBeCancelledAt_ShouldReturnTrue_WhenItIsTheDayBeforeCheckIn()
+    public void CanBeCancelledOn_ShouldReturnTrue_WhenListingTodayIsTheDayBeforeCheckIn()
     {
         var booking = CreateBooking();
 
-        booking.CanBeCancelledAt(At(CheckIn.AddDays(-1), hour: 23)).ShouldBeTrue();
+        booking.CanBeCancelledOn(CheckIn.AddDays(-1)).ShouldBeTrue();
     }
-    
+
     [Fact]
-    public void CanBeCancelledAt_ShouldReturnFalse_WhenItIsTheCheckInDay()
+    public void CanBeCancelledOn_ShouldReturnFalse_WhenListingTodayIsTheCheckInDay()
     {
         var booking = CreateBooking();
 
-        booking.CanBeCancelledAt(At(CheckIn, hour: 0)).ShouldBeFalse();
+        booking.CanBeCancelledOn(CheckIn).ShouldBeFalse();
+    }
+
+    [Fact]
+    public void Cancel_ShouldThrowAndKeepConfirmed_WhenListingTodayIsTheCheckInDay()
+    {
+        var booking = CreateBooking();
+        
+        Should.Throw<InvalidOperationException>(() =>
+            booking.Cancel(At(CheckIn.AddDays(-1), hour: 20), CheckIn, BookingCanceller.Guest));
+
+        booking.Status.ShouldBe(BookingStatus.Confirmed);
     }
 
     [Fact]
@@ -66,7 +77,7 @@ public sealed class BookingTests
         var booking = CreateBooking();
         var now = At(CheckIn.AddDays(-5));
 
-        booking.Cancel(now, BookingCanceller.Guest);
+        booking.Cancel(now, CheckIn.AddDays(-5), BookingCanceller.Guest);
 
         booking.Status.ShouldBe(BookingStatus.Cancelled);
         booking.CancelledAtUtc.ShouldBe(now);
@@ -77,9 +88,9 @@ public sealed class BookingTests
     public void Cancel_ShouldThrow_WhenBookingIsAlreadyCancelled()
     {
         var booking = CreateBooking();
-        booking.Cancel(At(CheckIn.AddDays(-5)), BookingCanceller.Guest);
+        booking.Cancel(At(CheckIn.AddDays(-5)), CheckIn.AddDays(-5), BookingCanceller.Guest);
 
-        Should.Throw<InvalidOperationException>(() => booking.Cancel(At(CheckIn.AddDays(-4)), BookingCanceller.Guest));
+        Should.Throw<InvalidOperationException>(() => booking.Cancel(At(CheckIn.AddDays(-4)), CheckIn.AddDays(-4), BookingCanceller.Guest));
     }
 
     // The existing booking is May 10–13
@@ -112,7 +123,7 @@ public sealed class BookingTests
     public void Blocks_ShouldReturnFalse_WhenOverlappingBookingIsCancelled()
     {
         var booking = CreateBooking();
-        booking.Cancel(At(CheckIn.AddDays(-5)), BookingCanceller.Guest);
+        booking.Cancel(At(CheckIn.AddDays(-5)), CheckIn.AddDays(-5), BookingCanceller.Guest);
 
         Blocks(booking, CheckIn, CheckOut).ShouldBeFalse();
     }
@@ -142,7 +153,7 @@ public sealed class BookingTests
     public void IsUpcoming_ShouldReturnFalse_WhenBookingIsCancelled()
     {
         var booking = CreateBooking();
-        booking.Cancel(At(CheckIn.AddDays(-5)), BookingCanceller.Guest);
+        booking.Cancel(At(CheckIn.AddDays(-5)), CheckIn.AddDays(-5), BookingCanceller.Guest);
 
         IsUpcoming(booking, CheckIn.AddDays(-1)).ShouldBeFalse();
     }

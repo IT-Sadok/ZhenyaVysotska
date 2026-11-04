@@ -13,6 +13,7 @@ public sealed record HostListingDto(
     double Longitude,
     double PublicLatitude,
     double PublicLongitude,
+    string TimeZoneId,
     decimal PricePerNight,
     int MaxGuests,
     bool IsActive,

@@ -146,12 +146,19 @@ public sealed class ListingFilterDtoValidatorTests
         _validator.TestValidate(new ListingFilterDto(CheckOut: Today.AddDays(2)))
             .ShouldHaveValidationErrorFor(x => x.CheckIn);
     }
+    
+    [Fact]
+    public void Validate_ShouldFail_WhenCheckInIsInThePastEverywhereOnEarth()
+    {
+        _validator.TestValidate(new ListingFilterDto(CheckIn: Today.AddDays(-2), CheckOut: Today.AddDays(2)))
+            .ShouldHaveValidationErrorFor(x => x.CheckIn);
+    }
 
     [Fact]
-    public void Validate_ShouldFail_WhenCheckInIsInThePast()
+    public void Validate_ShouldPass_WhenCheckInIsYesterdayInUtcButTodaySomewhereOnEarth()
     {
         _validator.TestValidate(new ListingFilterDto(CheckIn: Today.AddDays(-1), CheckOut: Today.AddDays(2)))
-            .ShouldHaveValidationErrorFor(x => x.CheckIn);
+            .ShouldNotHaveValidationErrorFor(x => x.CheckIn);
     }
 
     [Fact]

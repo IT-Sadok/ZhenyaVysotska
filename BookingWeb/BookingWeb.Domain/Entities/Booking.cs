@@ -75,16 +75,15 @@ public sealed class Booking
     public static Expression<Func<Booking, bool>> IsUpcoming(DateOnly today) =>
         booking => booking.Status == BookingStatus.Confirmed
                    && booking.CheckOut > today;
-
-    public bool CanBeCancelledAt(DateTimeOffset nowUtc)
+    
+    public bool CanBeCancelledOn(DateOnly listingToday)
     {
-        var today = DateOnly.FromDateTime(nowUtc.UtcDateTime);
-        return Status == BookingStatus.Confirmed && today < CheckIn;
+        return Status == BookingStatus.Confirmed && listingToday < CheckIn;
     }
 
-    public void Cancel(DateTimeOffset nowUtc, BookingCanceller canceller)
+    public void Cancel(DateTimeOffset nowUtc, DateOnly listingToday, BookingCanceller canceller)
     {
-        if (!CanBeCancelledAt(nowUtc))
+        if (!CanBeCancelledOn(listingToday))
         {
             throw new InvalidOperationException(
                 "Only a confirmed booking can be cancelled, and only before the check-in day.");
