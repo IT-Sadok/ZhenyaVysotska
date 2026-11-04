@@ -18,7 +18,7 @@ public sealed class UserRepository : IUserRepository
 
     public async Task<PagedResult<UserDto>> GetUsersAsync(UserFilterDto filter, CancellationToken ct = default)
     {
-        var query = _db.Users.AsNoTracking();
+        var query = _db.Users.AsNoTracking().Where(u => u.DeletedAtUtc == null);
         
         if (!string.IsNullOrWhiteSpace(filter.Role))
         {

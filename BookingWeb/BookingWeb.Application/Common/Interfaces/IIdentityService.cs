@@ -19,4 +19,8 @@ public interface IIdentityService
     Task<Result<UserDto>> GetUserByIdAsync(Guid userId, CancellationToken ct = default);
     
     Task<PagedResult<UserDto>> GetUsersAsync(UserFilterDto filter, CancellationToken ct = default);
+
+    Task<bool> CheckPasswordAsync(Guid userId, string password, CancellationToken ct = default);
+
+    Task<Result> SoftDeleteAsync(Guid userId, DateTimeOffset deletedAtUtc, CancellationToken ct = default);
 }
