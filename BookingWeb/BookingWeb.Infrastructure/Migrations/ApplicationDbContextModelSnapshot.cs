@@ -22,8 +22,64 @@ namespace BookingWeb.Infrastructure.Migrations
                 .HasAnnotation("ProductVersion", "10.0.11")
                 .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
+            NpgsqlModelBuilderExtensions.HasPostgresExtension(modelBuilder, "btree_gist");
             NpgsqlModelBuilderExtensions.HasPostgresExtension(modelBuilder, "postgis");
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
+
+            modelBuilder.Entity("BookingWeb.Domain.Entities.Booking", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset?>("CancelledAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("CancelledBy")
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)");
+
+                    b.Property<DateOnly>("CheckIn")
+                        .HasColumnType("date");
+
+                    b.Property<DateOnly>("CheckOut")
+                        .HasColumnType("date");
+
+                    b.Property<DateTimeOffset>("CreatedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("GuestId")
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("Guests")
+                        .HasColumnType("integer");
+
+                    b.Property<Guid>("ListingId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)");
+
+                    b.Property<decimal>("TotalPrice")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("GuestId", "CheckIn", "Id")
+                        .IsDescending(false, true, false);
+
+                    b.HasIndex("ListingId", "CheckIn", "Id")
+                        .IsDescending(false, true, false);
+
+                    b.ToTable("Bookings", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_Bookings_CheckOut_AfterCheckIn", "\"CheckOut\" > \"CheckIn\"");
+
+                            t.HasCheckConstraint("CK_Bookings_Guests_Positive", "\"Guests\" >= 1");
+                        });
+                });
 
             modelBuilder.Entity("BookingWeb.Domain.Entities.Listing", b =>
                 {
@@ -74,6 +130,11 @@ namespace BookingWeb.Infrastructure.Migrations
                     b.Property<string>("Region")
                         .HasMaxLength(100)
                         .HasColumnType("character varying(100)");
+
+                    b.Property<string>("TimeZoneId")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
 
                     b.Property<string>("Title")
                         .IsRequired()
@@ -416,6 +477,21 @@ namespace BookingWeb.Infrastructure.Migrations
                     b.HasKey("UserId", "LoginProvider", "Name");
 
                     b.ToTable("AspNetUserTokens", (string)null);
+                });
+
+            modelBuilder.Entity("BookingWeb.Domain.Entities.Booking", b =>
+                {
+                    b.HasOne("BookingWeb.Infrastructure.Identity.ApplicationUser", null)
+                        .WithMany()
+                        .HasForeignKey("GuestId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("BookingWeb.Domain.Entities.Listing", null)
+                        .WithMany()
+                        .HasForeignKey("ListingId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
                 });
 
             modelBuilder.Entity("BookingWeb.Domain.Entities.Listing", b =>

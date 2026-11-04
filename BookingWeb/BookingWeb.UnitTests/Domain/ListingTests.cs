@@ -10,6 +10,7 @@ public sealed class ListingTests
     private static readonly DateTimeOffset CreatedAt = new(2026, 1, 15, 12, 0, 0, TimeSpan.Zero);
     private static readonly GeoPoint Exact = new(48.2922, 24.5546);
     private static readonly GeoPoint Public = new(48.2950, 24.5580);
+    private const string Kyiv = "Europe/Kyiv";
 
     private static Listing CreateListing(
         Guid? hostId = null,
@@ -21,6 +22,7 @@ public sealed class ListingTests
         string address = "Danyla Halytskoho 1",
         GeoPoint? location = null,
         GeoPoint? publicLocation = null,
+        string timeZoneId = Kyiv,
         decimal pricePerNight = 1500m,
         int maxGuests = 2)
     {
@@ -34,6 +36,7 @@ public sealed class ListingTests
             address,
             location ?? Exact,
             publicLocation ?? Public,
+            timeZoneId,
             pricePerNight,
             maxGuests,
             CreatedAt);
@@ -171,7 +174,7 @@ public sealed class ListingTests
     {
         var exception = Should.Throw<ArgumentNullException>(() =>
             Listing.Create(HostId, "Loft", null, "UA", null, "Vorokhta", "Address 1",
-                null!, Public, 1500m, 2, CreatedAt));
+                null!, Public, Kyiv, 1500m, 2, CreatedAt));
 
         exception.ParamName.ShouldBe("location");
     }
@@ -181,9 +184,27 @@ public sealed class ListingTests
     {
         var exception = Should.Throw<ArgumentNullException>(() =>
             Listing.Create(HostId, "Loft", null, "UA", null, "Vorokhta", "Address 1",
-                Exact, null!, 1500m, 2, CreatedAt));
+                Exact, null!, Kyiv, 1500m, 2, CreatedAt));
 
         exception.ParamName.ShouldBe("publicLocation");
+    }
+
+    [Fact]
+    public void Create_ShouldStoreTimeZone_WhenTimeZoneIsKnown()
+    {
+        var listing = CreateListing(timeZoneId: "Asia/Tokyo");
+
+        listing.TimeZoneId.ShouldBe("Asia/Tokyo");
+    }
+
+    [Theory]
+    [InlineData("")]
+    [InlineData("Mars/Olympus_Mons")]
+    public void Create_ShouldThrow_WhenTimeZoneIsEmptyOrUnknown(string timeZoneId)
+    {
+        var exception = Should.Throw<ArgumentException>(() => CreateListing(timeZoneId: timeZoneId));
+
+        exception.ParamName.ShouldBe("timeZoneId");
     }
 
     [Fact]
@@ -244,10 +265,11 @@ public sealed class ListingTests
         var newExact = new GeoPoint(50.0614, 19.9366);
         var newPublic = new GeoPoint(50.0640, 19.9400);
 
-        listing.SetLocation(newExact, newPublic);
+        listing.SetLocation(newExact, newPublic, "Europe/Warsaw");
 
         listing.Location.ShouldBe(newExact);
         listing.PublicLocation.ShouldBe(newPublic);
+        listing.TimeZoneId.ShouldBe("Europe/Warsaw");
     }
 
     [Fact]
@@ -256,10 +278,11 @@ public sealed class ListingTests
         var listing = CreateListing();
         var newExact = new GeoPoint(50.0614, 19.9366);
 
-        Should.Throw<ArgumentException>(() => listing.SetLocation(newExact, newExact));
+        Should.Throw<ArgumentException>(() => listing.SetLocation(newExact, newExact, "Europe/Warsaw"));
 
         listing.Location.ShouldBe(Exact);
         listing.PublicLocation.ShouldBe(Public);
+        listing.TimeZoneId.ShouldBe(Kyiv);
     }
 
     [Fact]

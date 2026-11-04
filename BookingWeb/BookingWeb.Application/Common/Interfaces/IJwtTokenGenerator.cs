@@ -1,6 +1,4 @@
-using BookingWeb.Application.Models;
-
-namespace BookingWeb.Application.Interfaces;
+namespace BookingWeb.Application.Common.Interfaces;
 
 public interface IJwtTokenGenerator
 {

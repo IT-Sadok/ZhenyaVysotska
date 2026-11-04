@@ -1,7 +1,7 @@
 using BookingWeb.Api.Extensions;
 using BookingWeb.Application.Common.Constants;
 using BookingWeb.Application.Geocoding.Requests;
-using BookingWeb.Application.Interfaces;
+using BookingWeb.Application.Common.Interfaces;
 
 namespace BookingWeb.Api.Endpoints;
 

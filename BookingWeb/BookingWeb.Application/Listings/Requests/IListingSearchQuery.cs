@@ -10,4 +10,7 @@ public interface IListingSearchQuery
     double? MinLng { get; }
     double? MaxLat { get; }
     double? MaxLng { get; }
+
+    DateOnly? CheckIn { get; }
+    DateOnly? CheckOut { get; }
 }

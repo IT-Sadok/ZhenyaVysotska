@@ -5,9 +5,9 @@ namespace BookingWeb.Application.Listings.Validators;
 
 public sealed class MapSearchRequestValidator : AbstractValidator<MapSearchRequest>
 {
-    public MapSearchRequestValidator()
+    public MapSearchRequestValidator(TimeProvider timeProvider)
     {
-        Include(new ListingSearchQueryRules());
+        Include(new ListingSearchQueryRules(timeProvider));
 
         var code = ListingErrors.InvalidBoundingBox.Code;
         RuleFor(x => x.MinLat).NotNull().WithErrorCode(code);

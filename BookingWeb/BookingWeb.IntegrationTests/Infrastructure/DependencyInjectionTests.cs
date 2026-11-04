@@ -1,4 +1,4 @@
-using BookingWeb.Application.Interfaces;
+using BookingWeb.Application.Common.Interfaces;
 using BookingWeb.Infrastructure.Authentication;
 using BookingWeb.Infrastructure.Geocoding;
 using BookingWeb.Infrastructure.Identity;

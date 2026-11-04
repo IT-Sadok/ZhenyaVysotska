@@ -1,4 +1,8 @@
 using System.Reflection;
+using BookingWeb.Application.Admin;
+using BookingWeb.Application.Auth;
+using BookingWeb.Application.Bookings;
+using BookingWeb.Application.Common.Interfaces;
 using BookingWeb.Application.Common.Mapping;
 using BookingWeb.Application.Listings;
 using FluentValidation;

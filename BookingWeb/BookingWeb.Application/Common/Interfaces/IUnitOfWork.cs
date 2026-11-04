@@ -1,8 +1,10 @@
-namespace BookingWeb.Application.Interfaces;
+using BookingWeb.Application.Results;
+
+namespace BookingWeb.Application.Common.Interfaces;
 
 public interface IUnitOfWork
 { 
-    Task SaveChangesAsync(CancellationToken ct = default);
+    Task<Result> SaveChangesAsync(CancellationToken ct = default);
     
     Task<IUnitOfWorkTransaction>  BeginTransactionAsync(CancellationToken ct = default);
 }

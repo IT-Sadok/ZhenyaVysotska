@@ -14,7 +14,8 @@ public interface IListingService
 
     Task<Result<PublicListingDto>> GetByIdAsync(Guid listingId, CancellationToken ct = default);
 
-    Task<Result<IReadOnlyList<HostListingDto>>> GetMineAsync(Guid hostId, CancellationToken ct = default);
+    Task<Result<PagedResult<HostListingDto>>> GetMineAsync(
+        Guid hostId, PageRequest request, CancellationToken ct = default);
 
     Task<Result<PagedResult<PublicListingDto>>> SearchAsync(ListingFilterDto filter, CancellationToken ct = default);
 

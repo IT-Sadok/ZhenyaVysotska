@@ -1,6 +1,7 @@
 using BookingWeb.Application.Listings;
 using BookingWeb.Application.Listings.Requests;
 using BookingWeb.Application.Listings.Validators;
+using BookingWeb.UnitTests.TestDoubles;
 using FluentValidation.TestHelper;
 
 namespace BookingWeb.UnitTests.Listings;
@@ -9,8 +10,10 @@ public sealed class ListingFilterDtoValidatorTests
 {
     private const string BoundingBox = "BoundingBox";
     private static readonly string InvalidBox = ListingErrors.InvalidBoundingBox.Code;
+    private static readonly DateOnly Today = new(2026, 3, 1);
 
-    private readonly ListingFilterDtoValidator _validator = new();
+    private readonly ListingFilterDtoValidator _validator = 
+        new(new FixedTimeProvider(new DateTimeOffset(2026, 3, 1, 9, 0, 0, TimeSpan.Zero)));
 
     private static ListingFilterDto WithBox(double minLat = 50.3, double minLng = 30.3, double maxLat = 50.6, double maxLng = 30.8) =>
         new(MinLat: minLat, MinLng: minLng, MaxLat: maxLat, MaxLng: maxLng);
@@ -121,5 +124,47 @@ public sealed class ListingFilterDtoValidatorTests
         _validator.TestValidate(WithBox(minLng: 175, maxLng: 181))
             .ShouldHaveValidationErrorFor(x => x.MaxLng)
             .WithErrorCode(InvalidBox);
+    }
+
+    [Fact]
+    public void Validate_ShouldPass_WhenStayStartsToday()
+    {
+        _validator.TestValidate(new ListingFilterDto(CheckIn: Today, CheckOut: Today.AddDays(2)))
+            .ShouldNotHaveAnyValidationErrors();
+    }
+
+    [Fact]
+    public void Validate_ShouldFail_WhenOnlyCheckInIsGiven()
+    {
+        _validator.TestValidate(new ListingFilterDto(CheckIn: Today))
+            .ShouldHaveValidationErrorFor(x => x.CheckOut);
+    }
+
+    [Fact]
+    public void Validate_ShouldFail_WhenOnlyCheckOutIsGiven()
+    {
+        _validator.TestValidate(new ListingFilterDto(CheckOut: Today.AddDays(2)))
+            .ShouldHaveValidationErrorFor(x => x.CheckIn);
+    }
+    
+    [Fact]
+    public void Validate_ShouldFail_WhenCheckInIsInThePastEverywhereOnEarth()
+    {
+        _validator.TestValidate(new ListingFilterDto(CheckIn: Today.AddDays(-2), CheckOut: Today.AddDays(2)))
+            .ShouldHaveValidationErrorFor(x => x.CheckIn);
+    }
+
+    [Fact]
+    public void Validate_ShouldPass_WhenCheckInIsYesterdayInUtcButTodaySomewhereOnEarth()
+    {
+        _validator.TestValidate(new ListingFilterDto(CheckIn: Today.AddDays(-1), CheckOut: Today.AddDays(2)))
+            .ShouldNotHaveValidationErrorFor(x => x.CheckIn);
+    }
+
+    [Fact]
+    public void Validate_ShouldFail_WhenCheckOutIsNotAfterCheckIn()
+    {
+        _validator.TestValidate(new ListingFilterDto(CheckIn: Today.AddDays(3), CheckOut: Today.AddDays(3)))
+            .ShouldHaveValidationErrorFor(x => x.CheckOut);
     }
 }

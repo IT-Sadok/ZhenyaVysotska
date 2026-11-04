@@ -1,4 +1,4 @@
-using BookingWeb.Application.Interfaces;
+using BookingWeb.Application.Common.Interfaces;
 using BookingWeb.Application.Listings;
 using BookingWeb.Application.Models;
 using BookingWeb.Domain.Entities;
@@ -22,6 +22,13 @@ public sealed class ListingRepository : IListingRepository
         _db = db;
     }
 
+    public Task<Listing?> GetByIdAsync(Guid listingId, CancellationToken ct = default)
+    {
+        return _db.Listings
+            .AsNoTracking()
+            .FirstOrDefaultAsync(l => l.Id == listingId, ct);
+    }
+
     public Task<PublicListingDto?> GetPublicByIdAsync(Guid listingId, CancellationToken ct = default)
     {
         return _db.Listings
@@ -36,14 +43,16 @@ public sealed class ListingRepository : IListingRepository
         return _db.Listings.FirstOrDefaultAsync(l => l.Id == listingId && l.HostId == hostId, ct);
     }
 
-    public async Task<IReadOnlyList<HostListingDto>> GetByHostAsync(Guid hostId, CancellationToken ct = default)
+    public Task<PagedResult<HostListingDto>> GetByHostAsync(
+        Guid hostId, PageRequest request, CancellationToken ct = default)
     {
-        return await _db.Listings
+        return _db.Listings
             .AsNoTracking()
             .Where(l => l.HostId == hostId)
             .OrderByDescending(l => l.CreatedAtUtc)
+            .ThenBy(l => l.Id)
             .ProjectToType<HostListingDto>()
-            .ToListAsync(ct);
+            .ToPagedResultAsync(request.Page, request.PageSize, ct);
     }
 
     public async Task<PagedResult<PublicListingDto>> SearchAsync(
@@ -106,6 +115,15 @@ public sealed class ListingRepository : IListingRepository
             var box = GeometryFactory.ToGeometry(new Envelope(area.MinLng, area.MaxLng, area.MinLat, area.MaxLat));
 
             query = query.Where(l => EF.Property<Point>(l, ListingConfiguration.PublicGeom).Intersects(box));
+        }
+
+        if (criteria.Stay is { } stay)
+        {
+            var bookedListingIds = _db.Bookings
+                .Where(Booking.Blocks(stay.CheckIn, stay.CheckOut))
+                .Select(b => b.ListingId);
+
+            query = query.Where(l => !bookedListingIds.Contains(l.Id));
         }
 
         return query;

@@ -1,0 +1,85 @@
+using BookingWeb.Application.Common.Interfaces;
+using BookingWeb.Application.Models;
+using BookingWeb.Domain.Entities;
+using Microsoft.EntityFrameworkCore;
+
+namespace BookingWeb.Infrastructure.Persistence.Repositories;
+
+public sealed class BookingRepository : IBookingRepository
+{
+    private readonly ApplicationDbContext _db;
+    public BookingRepository(ApplicationDbContext db)
+    {
+        _db = db;
+    }
+
+    public void Add(Booking booking)
+    {
+        _db.Bookings.Add(booking);
+    }
+
+    public Task<PagedResult<Booking>> GetForListingAsync(Guid listingId, PageRequest request, CancellationToken ct = default)
+    {
+        return _db.Bookings
+            .AsNoTracking()
+            .Where(b=> b.ListingId == listingId)
+            .OrderByDescending(b => b.CheckIn)
+            .ThenBy(b=>b.Id)
+            .ToPagedResultAsync(request.Page, request.PageSize, ct);
+    }
+    
+    public Task<Booking?> GetByIdForGuestAsync(Guid bookingId, Guid guestId, CancellationToken ct = default)
+    {
+        return _db.Bookings.FirstOrDefaultAsync(b => b.Id == bookingId && b.GuestId == guestId, ct);
+    }
+
+    public Task<PagedResult<Booking>> GetForGuestAsync(Guid guestId, PageRequest request, CancellationToken ct = default)
+    {
+        return _db.Bookings
+            .AsNoTracking()
+            .Where(b=> b.GuestId == guestId)
+            .OrderByDescending(b => b.CheckIn)
+            .ThenBy(b=>b.Id)
+            .ToPagedResultAsync(request.Page, request.PageSize, ct);
+    }
+    
+    public Task<Booking?> GetByIdForHostAsync(Guid bookingId, Guid hostId, CancellationToken ct = default)
+    {
+        return _db.Bookings.FirstOrDefaultAsync(
+            b => b.Id == bookingId 
+                 && _db.Listings.Any(l => l.Id == b.ListingId && l.HostId == hostId), ct);
+    }
+    
+    public Task<bool> HasOverlapAsync(
+        Guid listingId, DateOnly checkIn, DateOnly checkOut, CancellationToken ct = default)
+    {
+        return _db.Bookings
+            .Where(b => b.ListingId == listingId)
+            .Where(Booking.Blocks(checkIn, checkOut))
+            .AnyAsync(ct);
+    }
+
+    public Task<bool> HasUpcomingForListingAsync(Guid listingId, DateOnly today, CancellationToken ct = default)
+    {
+        return _db.Bookings
+            .Where(b => b.ListingId == listingId)
+            .Where(Booking.IsUpcoming(today))
+            .AnyAsync(ct);
+    }
+
+    public Task<bool> HasUpcomingForGuestAsync(Guid guestId, DateOnly today, CancellationToken ct = default)
+    {
+        return _db.Bookings
+            .Where(b => b.GuestId == guestId)
+            .Where(Booking.IsUpcoming(today))
+            .AnyAsync(ct);
+    }
+
+    public Task<bool> HasUpcomingForHostAsync(Guid hostId, DateOnly today, CancellationToken ct = default)
+    {
+        return _db.Bookings
+            .Where(b => _db.Listings.Any(l => l.Id == b.ListingId && l.HostId == hostId))
+            .Where(Booking.IsUpcoming(today))
+            .AnyAsync(ct);
+    }
+}

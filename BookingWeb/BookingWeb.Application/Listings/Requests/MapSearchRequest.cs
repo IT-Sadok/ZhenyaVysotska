@@ -8,6 +8,8 @@ public sealed record MapSearchRequest(
     decimal? MinPrice = null,
     decimal? MaxPrice = null,
     int? Guests = null,
+    DateOnly? CheckIn = null,
+    DateOnly? CheckOut = null,
     int Limit = MapSearchRequest.MaxLimit) : IListingSearchQuery
 {
     public const int MaxLimit = 200;

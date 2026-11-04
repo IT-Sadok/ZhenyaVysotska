@@ -1,6 +1,6 @@
 using BookingWeb.Application.Admin;
 using BookingWeb.Application.Auth;
-using BookingWeb.Application.Interfaces;
+using BookingWeb.Application.Common.Interfaces;
 using BookingWeb.Application.Models;
 using BookingWeb.Application.Results;
 using BookingWeb.Domain.Entities;
@@ -58,7 +58,12 @@ public sealed class IdentityService : IIdentityService
         }
         
         _userProfiles.Add(UserProfile.Create(user.Id, firstName, lastName));
-        await _unitOfWork.SaveChangesAsync(ct);
+        var saveResult = await _unitOfWork.SaveChangesAsync(ct);
+        if (saveResult.IsFailure)
+        {
+            return saveResult.Error;
+        }
+
         await transaction.CommitAsync(ct);
  
         return await ToUserDtoAsync(user);

@@ -19,11 +19,14 @@ public class ApplicationDbContext
     public DbSet<UserProfile> UserProfiles => Set<UserProfile>();
     public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
     public DbSet<Listing> Listings => Set<Listing>();
+    public DbSet<Booking> Bookings => Set<Booking>();
     
     protected override void OnModelCreating(ModelBuilder builder)
     {
         base.OnModelCreating(builder);
 
+        builder.HasPostgresExtension("btree_gist");
+        
         builder.HasPostgresExtension("postgis");
 
         builder.ApplyConfigurationsFromAssembly(Assembly.GetExecutingAssembly());

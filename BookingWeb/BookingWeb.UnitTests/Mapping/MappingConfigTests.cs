@@ -1,3 +1,4 @@
+using BookingWeb.Application.Bookings;
 using BookingWeb.Application.Common.Mapping;
 using BookingWeb.Application.Listings;
 using BookingWeb.Application.Profiles;
@@ -16,7 +17,7 @@ public sealed class MappingConfigTests
     private static Listing CreateListing(Guid? hostId = null, string? description = "Cozy", string? region = "Kyiv") =>
         Listing.Create(
             hostId ?? Guid.NewGuid(), "Loft", description, "UA", region, "Kyiv", "Khreshchatyk 1",
-            location: Exact, publicLocation: Public, 1500m, 2, DateTimeOffset.UtcNow);
+            location: Exact, publicLocation: Public, "Europe/Kyiv", 1500m, 2, DateTimeOffset.UtcNow);
 
     [Fact]
     public void RegisterMappings_ShouldProduceValidConfig_WhenCompiled()
@@ -90,6 +91,7 @@ public sealed class MappingConfigTests
         dto.Longitude.ShouldBe(Public.Longitude);
         dto.PricePerNight.ShouldBe(1500m);
         dto.MaxGuests.ShouldBe(2);
+        dto.TimeZoneId.ShouldBe("Europe/Kyiv");
     }
 
     [Fact]
@@ -104,6 +106,7 @@ public sealed class MappingConfigTests
         dto.Longitude.ShouldBe(Exact.Longitude);
         dto.PublicLatitude.ShouldBe(Public.Latitude);
         dto.PublicLongitude.ShouldBe(Public.Longitude);
+        dto.TimeZoneId.ShouldBe("Europe/Kyiv");
         dto.IsActive.ShouldBeTrue();
         dto.CreatedAtUtc.ShouldBe(listing.CreatedAtUtc);
     }
@@ -159,5 +162,44 @@ public sealed class MappingConfigTests
 
         dto.Bio.ShouldBeNull();
         dto.AvatarUrl.ShouldBeNull();
+    }
+
+    [Fact]
+    public void Adapt_ShouldMapAllFields_WhenMappingConfirmedBookingToDto()
+    {
+        var createdAt = new DateTimeOffset(2026, 3, 1, 9, 0, 0, TimeSpan.Zero);
+        var listingId = Guid.NewGuid();
+        var booking = Booking.Create(
+            listingId, Guid.NewGuid(), new DateOnly(2026, 3, 10), new DateOnly(2026, 3, 13), 2, 1000m, createdAt);
+
+        var dto = booking.Adapt<BookingDto>();
+
+        dto.Id.ShouldBe(booking.Id);
+        dto.ListingId.ShouldBe(listingId);
+        dto.CheckIn.ShouldBe(new DateOnly(2026, 3, 10));
+        dto.CheckOut.ShouldBe(new DateOnly(2026, 3, 13));
+        dto.Nights.ShouldBe(3);
+        dto.Guests.ShouldBe(2);
+        dto.TotalPrice.ShouldBe(3000m);
+        dto.Status.ShouldBe("Confirmed");
+        dto.CreatedAtUtc.ShouldBe(createdAt);
+        dto.CancelledAtUtc.ShouldBeNull();
+        dto.CancelledBy.ShouldBeNull();
+    }
+
+    [Fact]
+    public void Adapt_ShouldMapCancellationAsStrings_WhenBookingIsCancelledByHost()
+    {
+        var booking = Booking.Create(
+            Guid.NewGuid(), Guid.NewGuid(), new DateOnly(2026, 3, 10), new DateOnly(2026, 3, 13), 2, 1000m,
+            new DateTimeOffset(2026, 3, 1, 9, 0, 0, TimeSpan.Zero));
+        var cancelledAt = new DateTimeOffset(2026, 3, 2, 9, 0, 0, TimeSpan.Zero);
+        booking.Cancel(cancelledAt, DateOnly.FromDateTime(cancelledAt.UtcDateTime), BookingCanceller.Host);
+
+        var dto = booking.Adapt<BookingDto>();
+
+        dto.Status.ShouldBe("Cancelled");
+        dto.CancelledAtUtc.ShouldBe(cancelledAt);
+        dto.CancelledBy.ShouldBe("Host");
     }
 }

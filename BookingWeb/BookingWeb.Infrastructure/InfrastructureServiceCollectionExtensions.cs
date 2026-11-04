@@ -1,15 +1,16 @@
 using System.Security.Claims;
 using System.Text;
-using System.Threading.RateLimiting;
-using BookingWeb.Application.Common.Settings;
 using BookingWeb.Application.Common.Constants;
-using BookingWeb.Application.Interfaces;
+using BookingWeb.Application.Common.Interfaces;
+using BookingWeb.Application.Common.Settings;
+using System.Threading.RateLimiting;
 using BookingWeb.Domain;
 using BookingWeb.Infrastructure.Authentication;
 using BookingWeb.Infrastructure.Geocoding;
 using BookingWeb.Infrastructure.Identity;
 using BookingWeb.Infrastructure.Persistence;
 using BookingWeb.Infrastructure.Persistence.Repositories;
+using BookingWeb.Infrastructure.TimeZones;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
@@ -32,6 +33,8 @@ public static class InfrastructureServiceCollectionExtensions
         services.AddTokenServices(configuration);
         services.AddAuthenticationAndAuthorization(configuration);
         services.AddGeocoding(configuration);
+        
+        services.AddSingleton<ITimeZoneResolver, GeoTimeZoneResolver>();
  
         return services;
     }
@@ -101,10 +104,11 @@ public static class InfrastructureServiceCollectionExtensions
                     NameClaimType = "sub"
                 };
             });
- 
+
         services.AddAuthorizationBuilder()
             .AddPolicy(PolicyNames.AdminOnly, policy => policy.RequireRole(Roles.Admin))
-            .AddPolicy(PolicyNames.HostOnly, policy => policy.RequireRole(Roles.Host));
+            .AddPolicy(PolicyNames.HostOnly, policy => policy.RequireRole(Roles.Host))
+            .AddPolicy(PolicyNames.ClientOnly, policy => policy.RequireRole(Roles.Client));
     }
 
     private static void AddGeocoding(this IServiceCollection services, IConfiguration configuration)

@@ -1,4 +1,5 @@
-using BookingWeb.Application.Interfaces;
+using BookingWeb.Application.Common;
+using BookingWeb.Application.Common.Interfaces;
 using BookingWeb.Application.Listings.Requests;
 using BookingWeb.Application.Models;
 using BookingWeb.Application.Results;
@@ -11,20 +12,26 @@ namespace BookingWeb.Application.Listings;
 public sealed class ListingService : IListingService
 {
     private readonly IListingRepository _listingRepository;
+    private readonly IBookingRepository _bookingRepository;
     private readonly IUnitOfWork _unitOfWork;
     private readonly TimeProvider _timeProvider;
     private readonly ILocationObfuscator _locationObfuscator;
+    private readonly ITimeZoneResolver _timeZoneResolver;
 
     public ListingService(
         IListingRepository listingRepository, 
+        IBookingRepository bookingRepository,
         IUnitOfWork unitOfWork,
         TimeProvider timeProvider,
-        ILocationObfuscator locationObfuscator)
+        ILocationObfuscator locationObfuscator,
+        ITimeZoneResolver timeZoneResolver)
     {
         _listingRepository = listingRepository;
+        _bookingRepository = bookingRepository;
         _unitOfWork = unitOfWork;
         _timeProvider = timeProvider;
         _locationObfuscator = locationObfuscator;
+        _timeZoneResolver = timeZoneResolver;
     }
     
     public async Task<Result<HostListingDto>> CreateAsync(
@@ -42,6 +49,7 @@ public sealed class ListingService : IListingService
             request.Address,
             location: location,
             publicLocation: _locationObfuscator.Obfuscate(location),
+            timeZoneId: _timeZoneResolver.Resolve(location),
             request.PricePerNight,
             request.MaxGuests,
             _timeProvider.GetUtcNow());
@@ -65,12 +73,10 @@ public sealed class ListingService : IListingService
         return listing;
     }
 
-    public async Task<Result<IReadOnlyList<HostListingDto>>> GetMineAsync(
-        Guid hostId, CancellationToken ct = default)
+    public async Task<Result<PagedResult<HostListingDto>>> GetMineAsync(
+        Guid hostId, PageRequest request, CancellationToken ct = default)
     {
-        var listings = await _listingRepository.GetByHostAsync(hostId, ct);
-
-        return Result.Success(listings);
+        return await _listingRepository.GetByHostAsync(hostId, request, ct);
     }
 
     public async Task<Result<PagedResult<PublicListingDto>>> SearchAsync(
@@ -118,7 +124,10 @@ public sealed class ListingService : IListingService
         var location = ToGeoPoint(request);
         if (location != listing.Location)
         {
-            listing.SetLocation(location, _locationObfuscator.Obfuscate(location));
+            listing.SetLocation(
+                location,
+                _locationObfuscator.Obfuscate(location),
+                _timeZoneResolver.Resolve(location));
         }
         
         await _unitOfWork.SaveChangesAsync(ct);
@@ -133,6 +142,12 @@ public sealed class ListingService : IListingService
         if (listing is null)
         {
             return ListingErrors.NotFound;
+        }
+
+        var today = _timeProvider.GetLocalDate(listing.TimeZoneId);
+        if (await _bookingRepository.HasUpcomingForListingAsync(listing.Id, today, ct))
+        {
+            return ListingErrors.HasUpcomingBookings;
         }
         
         listing.Deactivate();

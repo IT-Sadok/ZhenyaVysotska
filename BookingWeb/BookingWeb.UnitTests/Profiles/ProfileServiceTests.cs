@@ -1,4 +1,4 @@
-using BookingWeb.Application.Interfaces;
+using BookingWeb.Application.Common.Interfaces;
 using BookingWeb.Application.Profiles;
 using BookingWeb.Application.Profiles.Requests;
 using BookingWeb.Application.Results;

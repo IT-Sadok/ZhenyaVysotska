@@ -130,7 +130,7 @@ public sealed class ListingPrivacyTests : ApiTestBase
         var body = await GetBodyAsync(host, "/api/listings/mine");
 
         using var document = JsonDocument.Parse(body);
-        var listing = document.RootElement.EnumerateArray().ShouldHaveSingleItem();
+        var listing = document.RootElement.GetProperty("items").EnumerateArray().ShouldHaveSingleItem();
         listing.GetProperty("address").GetString().ShouldBe(Address);
         listing.GetProperty("latitude").GetDouble().ShouldBe(KyivLatitude);
         listing.GetProperty("longitude").GetDouble().ShouldBe(KyivLongitude);
