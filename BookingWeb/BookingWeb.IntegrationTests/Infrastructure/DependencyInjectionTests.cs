@@ -1,5 +1,6 @@
 using BookingWeb.Application.Interfaces;
 using BookingWeb.Infrastructure.Authentication;
+using BookingWeb.Infrastructure.Geocoding;
 using BookingWeb.Infrastructure.Identity;
 using BookingWeb.Infrastructure.Persistence;
 using BookingWeb.Infrastructure.Persistence.Repositories;
@@ -27,6 +28,7 @@ public sealed class DependencyInjectionTests
         { typeof(IUnitOfWork), typeof(UnitOfWork) },
         { typeof(IIdentityService), typeof(IdentityService) },
         { typeof(IJwtTokenGenerator), typeof(JwtTokenGenerator) },
+        { typeof(IGeocodingService), typeof(NominatimGeocodingService) },
     };
 
     [Theory]
