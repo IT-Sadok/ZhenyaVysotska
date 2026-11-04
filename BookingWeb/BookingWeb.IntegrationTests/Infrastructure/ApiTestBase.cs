@@ -3,6 +3,8 @@ using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using BookingWeb.Application.Auth.Requests;
 using BookingWeb.Application.Auth.Responses;
+using BookingWeb.Application.Listings;
+using BookingWeb.Application.Listings.Requests;
 using BookingWeb.Domain;
 
 namespace BookingWeb.IntegrationTests.Infrastructure;
@@ -55,6 +57,28 @@ public abstract class ApiTestBase : IAsyncLifetime
     protected Task<AuthResponse> LoginAsAdminAsync()
     {
         return LoginAsync(ApiFactory.AdminEmail, ApiFactory.AdminPassword);
+    }
+    
+    protected static DateOnly Today => DateOnly.FromDateTime(DateTime.UtcNow);
+    
+    protected async Task<HttpClient> CreateUserClientAsync(string email, string role)
+    {
+        var auth = await RegisterAsync(email, role);
+        return CreateAuthorizedClient(auth.AccessToken);
+    }
+
+    protected static async Task<ListingDto> CreateListingAsync(
+        HttpClient hostClient,
+        decimal pricePerNight = 1000m,
+        int maxGuests = 4,
+        string city = "Kyiv")
+    {
+        var request = new ListingRequest("Loft", "Cozy loft", city, "Khreshchatyk 1", pricePerNight, maxGuests);
+
+        var response = await hostClient.PostAsJsonAsync("/api/listings", request);
+
+        await response.ShouldHaveStatusAsync(HttpStatusCode.Created);
+        return (await response.Content.ReadFromJsonAsync<ListingDto>())!;
     }
     
     protected HttpClient CreateAuthorizedClient(string accessToken)

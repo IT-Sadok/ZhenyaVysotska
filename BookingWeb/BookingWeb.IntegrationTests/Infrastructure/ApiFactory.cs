@@ -23,7 +23,7 @@ public sealed class ApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
         "Seed__AdminPassword"
     ];
 
-    private readonly PostgreSqlContainer _postgres = new PostgreSqlBuilder("postgres:17-alpine").Build();
+    private readonly PostgreSqlContainer _postgres = new PostgreSqlBuilder("postgres:16").Build();
 
     public async Task InitializeAsync()
     {
@@ -42,6 +42,12 @@ public sealed class ApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
         builder.UseEnvironment("Testing");
+        
+        builder.UseDefaultServiceProvider(options =>
+        {
+            options.ValidateOnBuild = true;
+            options.ValidateScopes = true;
+        });
     }
 
     public async Task ResetDatabaseAsync()
@@ -52,6 +58,7 @@ public sealed class ApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
         await db.Database.ExecuteSqlRawAsync(
             """
             TRUNCATE TABLE
+                "Listings",
                 "RefreshTokens",
                 "UserProfiles",
                 "AspNetUserRoles",

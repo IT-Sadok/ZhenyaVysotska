@@ -6,9 +6,9 @@ using BookingWeb.Domain;
 
 namespace BookingWeb.Api.Endpoints;
 
-public static class AuthEndpoints
+public sealed class AuthEndpoints : IEndpointGroup
 {
-    public static IEndpointRouteBuilder MapAuthEndpoints(this IEndpointRouteBuilder routes)
+    public void MapEndpoints(IEndpointRouteBuilder routes)
     {
         var group = routes.MapGroup("/auth")
             .WithTags("Auth");
@@ -64,7 +64,5 @@ public static class AuthEndpoints
             return result.Match(Results.Ok);
         })
             .RequireAuthorization();
-
-        return routes;
     }
 }

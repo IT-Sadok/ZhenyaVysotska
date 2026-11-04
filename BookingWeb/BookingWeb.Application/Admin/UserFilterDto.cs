@@ -1,6 +1,6 @@
-namespace BookingWeb.Application.Models;
+namespace BookingWeb.Application.Admin;
 
-public record UserFilterDto(
+public sealed record UserFilterDto(
     string? Role,
     string? Email,
     string? SortBy,

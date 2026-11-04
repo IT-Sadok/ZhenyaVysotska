@@ -1,4 +1,6 @@
-namespace BookingWeb.Domain.Models;
+using Ardalis.GuardClauses;
+
+namespace BookingWeb.Domain.Entities;
 
 public class UserProfile
 {
@@ -12,9 +14,7 @@ public class UserProfile
 
     public static UserProfile Create(Guid userId, string firstName, string lastName)
     {
-        if (userId == Guid.Empty)
-            throw new ArgumentException("userId is required.", nameof(userId));
-
+        Guard.Against.Default(userId);
         var profile = new UserProfile {UserId =  userId};
         profile.UpdateName(firstName, lastName);
         return profile;
@@ -22,10 +22,8 @@ public class UserProfile
 
     public void UpdateName(string firstName, string lastName)
     {
-        if (string.IsNullOrWhiteSpace(firstName))
-            throw new ArgumentException("firstName can't be empty.", nameof(firstName));
-        if (string.IsNullOrWhiteSpace(lastName))
-            throw new ArgumentException("lastName can't be empty.", nameof(lastName));
+        Guard.Against.NullOrWhiteSpace(firstName);
+        Guard.Against.NullOrWhiteSpace(lastName);
         
         FirstName = firstName.Trim();
         LastName = lastName.Trim();

@@ -1,9 +1,11 @@
+using BookingWeb.Application.Admin;
+using BookingWeb.Application.Auth;
 using BookingWeb.Application.Constants;
 using BookingWeb.Application.Interfaces;
 using BookingWeb.Application.Models;
 using Microsoft.EntityFrameworkCore;
 
-namespace BookingWeb.Infrastructure.Persistence;
+namespace BookingWeb.Infrastructure.Persistence.Repositories;
 
 public sealed class UserRepository : IUserRepository
 {

@@ -7,6 +7,7 @@ using BookingWeb.Domain;
 using BookingWeb.Infrastructure.Authentication;
 using BookingWeb.Infrastructure.Identity;
 using BookingWeb.Infrastructure.Persistence;
+using BookingWeb.Infrastructure.Persistence.Repositories;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
@@ -40,9 +41,14 @@ public static class InfrastructureServiceCollectionExtensions
         services.AddDbContext<ApplicationDbContext>(options => options.UseNpgsql(connectionString));
         
         services.AddScoped<IUnitOfWork, UnitOfWork>();
-        services.AddScoped<IUserRepository, UserRepository>();
-        services.AddScoped<IUserProfileRepository, UserProfileRepository>();
-        services.AddScoped<IRefreshTokenRepository, RefreshTokenRepository>();
+        
+        services.Scan(scan => scan
+            .FromAssemblyOf<ListingRepository>()
+            .AddClasses(classes => classes
+                .InNamespaceOf<ListingRepository>()
+                .Where(type => type.Name.EndsWith("Repository")))
+            .AsMatchingInterface()
+            .WithScopedLifetime());
     }
  
     private static void AddIdentityServices(this IServiceCollection services)
@@ -96,7 +102,6 @@ public static class InfrastructureServiceCollectionExtensions
             .AddPolicy(PolicyNames.AdminOnly, policy => policy.RequireRole(Roles.Admin))
             .AddPolicy(PolicyNames.HostOnly, policy => policy.RequireRole(Roles.Host));
     }
- 
 
     private static JwtSettings GetValidatedJwtSettings(IConfiguration configuration)
     {

@@ -4,9 +4,9 @@ using BookingWeb.Application.Profiles.Requests;
 
 namespace BookingWeb.Api.Endpoints;
 
-public static class ProfileEndpoints
+public sealed class ProfileEndpoints : IEndpointGroup
 {
-    public static IEndpointRouteBuilder MapProfileEndpoints(this IEndpointRouteBuilder routes)
+    public void MapEndpoints(IEndpointRouteBuilder routes)
     {
         var group = routes.MapGroup("/profile")
             .WithTags("Profile")
@@ -33,6 +33,5 @@ public static class ProfileEndpoints
             return result.Match(Results.Ok);
         });
 
-        return routes;
     }
 }

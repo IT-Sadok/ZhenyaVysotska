@@ -1,9 +1,8 @@
 using BookingWeb.Application.Constants;
-using BookingWeb.Application.Models;
 using BookingWeb.Domain;
 using FluentValidation;
 
-namespace BookingWeb.Application.Admin.Validators;
+namespace BookingWeb.Application.Admin;
 
 public sealed class UserFilterDtoValidator : AbstractValidator<UserFilterDto>
 {
