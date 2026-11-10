@@ -54,6 +54,18 @@ public sealed class GeocodingEndpointsTests : ApiTestBase
     }
 
     [Fact]
+    public async Task Search_ShouldRestrictResultsToConfiguredCountries_WhenCalled()
+    {
+        using var host = await CreateHostAsync();
+
+        await host.GetAsync(Search("Одеса"));
+
+        var sent = Nominatim.Requests.ShouldHaveSingleItem();
+        var query = System.Web.HttpUtility.ParseQueryString(sent.Uri.Query);
+        query["countrycodes"].ShouldBe("ua");
+    }
+
+    [Fact]
     public async Task Search_ShouldServeRepeatedQueryFromCache_WhenQueryDiffersOnlyByCaseAndWhitespace()
     {
         using var host = await CreateHostAsync();
@@ -162,7 +174,7 @@ public sealed class GeocodingEndpointsTests : ApiTestBase
     }
 
     [Fact]
-    public async Task Reverse_ShouldReturnCityRegionAndUpperCaseCountryCode_WhenAddressIsFound()
+    public async Task Reverse_ShouldReturnCityAndRegion_WhenAddressIsFound()
     {
         using var host = await CreateHostAsync();
 
@@ -170,7 +182,7 @@ public sealed class GeocodingEndpointsTests : ApiTestBase
 
         await response.ShouldHaveStatusAsync(HttpStatusCode.OK);
         var address = (await response.Content.ReadFromJsonAsync<ReverseGeocodingDto>())!;
-        address.ShouldBe(new ReverseGeocodingDto("Хрещатик, Київ, 01001, Україна", "Київ", "Київ", "UA"));
+        address.ShouldBe(new ReverseGeocodingDto("Хрещатик, Київ, 01001, Україна", "Київ", "Київ"));
     }
 
     [Fact]

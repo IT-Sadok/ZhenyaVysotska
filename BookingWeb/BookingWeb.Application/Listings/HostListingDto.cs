@@ -5,7 +5,6 @@ public sealed record HostListingDto(
     Guid HostId,
     string Title,
     string? Description,
-    string CountryCode,
     string? Region,
     string City,
     string Address,

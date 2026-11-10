@@ -82,7 +82,7 @@ public abstract class ApiTestBase : IAsyncLifetime
         double longitude = KyivLongitude)
     {
         var request = new ListingRequest(
-            "Loft", "Cozy loft", "UA", "Kyiv", city, "Khreshchatyk 1", latitude, longitude, pricePerNight, maxGuests);
+            "Loft", "Cozy loft", "Kyiv", city, "Khreshchatyk 1", latitude, longitude, pricePerNight, maxGuests);
 
         var response = await hostClient.PostAsJsonAsync("/api/listings", request);
 

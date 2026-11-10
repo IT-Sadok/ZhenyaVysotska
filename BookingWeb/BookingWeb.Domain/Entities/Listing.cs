@@ -5,13 +5,10 @@ namespace BookingWeb.Domain.Entities;
 
 public sealed class Listing
 {
-    public const int CountryCodeLength = 2;
-
     public Guid Id { get; private set; }
     public Guid HostId { get; private set; }
     public string Title { get; private set; } = null!;
     public string? Description { get; private set; }
-    public string CountryCode { get; private set; } = null!;
     public string? Region { get; private set; }
     public string City { get; private set; } = null!;
     public string Address { get; private set; } = null!;
@@ -28,7 +25,6 @@ public sealed class Listing
         Guid hostId,
         string title,
         string? description,
-        string countryCode,
         string? region,
         string city,
         string address,
@@ -48,7 +44,7 @@ public sealed class Listing
             CreatedAtUtc = createdAtUtc
         };
 
-        listing.Update(title, description, countryCode, region, city, address, pricePerNight, maxGuests);
+        listing.Update(title, description, region, city, address, pricePerNight, maxGuests);
         listing.SetLocation(location, publicLocation);
         return listing;
     }
@@ -56,7 +52,6 @@ public sealed class Listing
     public void Update(
         string title,
         string? description,
-        string countryCode,
         string? region,
         string city,
         string address,
@@ -64,19 +59,13 @@ public sealed class Listing
         int maxGuests)
     {
         Guard.Against.NullOrWhiteSpace(title);
-        Guard.Against.NullOrWhiteSpace(countryCode);
         Guard.Against.NullOrWhiteSpace(city);
         Guard.Against.NullOrWhiteSpace(address);
         Guard.Against.NegativeOrZero(pricePerNight);
         Guard.Against.NegativeOrZero(maxGuests);
-        
-        var normalizedCountryCode = countryCode.Trim().ToUpperInvariant();
-        Guard.Against.InvalidFormat(normalizedCountryCode, nameof(countryCode), "^[A-Z]{2}$",
-            "Country code must be two Latin letters (ISO 3166-1 alpha-2).");
 
         Title = title.Trim();
         Description = string.IsNullOrWhiteSpace(description) ? null : description.Trim();
-        CountryCode = normalizedCountryCode;
         Region = string.IsNullOrWhiteSpace(region) ? null : region.Trim();
         City = city.Trim();
         Address = address.Trim();

@@ -31,7 +31,7 @@ public sealed class ListingServiceTests
     private Listing NewListing(string title = "Loft", string? description = null, decimal price = 1000m, int guests = 2)
     {
         return Listing.Create(
-            _hostId, title, description, "UA", "Kyiv", "Kyiv", "Khreshchatyk 1",
+            _hostId, title, description, "Kyiv", "Kyiv", "Khreshchatyk 1",
             location: KyivExact, publicLocation: KyivPublic, price, guests, Now);
     }
 
@@ -48,12 +48,12 @@ public sealed class ListingServiceTests
     private static ListingRequest CreateRequest()
     {
         return new ListingRequest(
-            "Sea view", "Near the beach", "UA", "Odesa Oblast", "Odesa", "Prymorska 1",
+            "Sea view", "Near the beach", "Odesa Oblast", "Odesa", "Prymorska 1",
             OdesaExact.Latitude, OdesaExact.Longitude, 2000m, 4);
     }
 
     private static PublicListingDto PublicDto(Guid? id = null) =>
-        new(id ?? Guid.NewGuid(), Guid.NewGuid(), "Loft", null, "UA", null, "Kyiv",
+        new(id ?? Guid.NewGuid(), Guid.NewGuid(), "Loft", null, null, "Kyiv",
             KyivPublic.Latitude, KyivPublic.Longitude, 1000m, 2);
 
     private static List<ListingMarkerDto> Markers(int count) =>
@@ -91,7 +91,6 @@ public sealed class ListingServiceTests
         added.Location.ShouldBe(OdesaExact);
         added.PublicLocation.ShouldBe(
             new GeoPoint(OdesaExact.Latitude + FakeLocationObfuscator.LatitudeOffset, OdesaExact.Longitude));
-        added.CountryCode.ShouldBe("UA");
         added.Region.ShouldBe("Odesa Oblast");
     }
 

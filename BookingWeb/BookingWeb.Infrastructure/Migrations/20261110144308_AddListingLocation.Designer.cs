@@ -14,8 +14,8 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace BookingWeb.Infrastructure.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    [Migration("20261103160703_AddListingCreatedAtIndex")]
-    partial class AddListingCreatedAtIndex
+    [Migration("20261110144308_AddListingLocation")]
+    partial class AddListingLocation
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -42,12 +42,6 @@ namespace BookingWeb.Infrastructure.Migrations
                         .IsRequired()
                         .HasMaxLength(100)
                         .HasColumnType("character varying(100)");
-
-                    b.Property<string>("CountryCode")
-                        .IsRequired()
-                        .HasMaxLength(2)
-                        .HasColumnType("character(2)")
-                        .IsFixedLength();
 
                     b.Property<DateTimeOffset>("CreatedAtUtc")
                         .HasColumnType("timestamp with time zone");
@@ -126,8 +120,6 @@ namespace BookingWeb.Infrastructure.Migrations
 
                     b.ToTable("Listings", null, t =>
                         {
-                            t.HasCheckConstraint("CK_Listings_CountryCode_Format", "\"CountryCode\" ~ '^[A-Z]{2}$'");
-
                             t.HasCheckConstraint("CK_Listings_Latitude_Range", "\"Latitude\" BETWEEN -90 AND 90");
 
                             t.HasCheckConstraint("CK_Listings_Longitude_Range", "\"Longitude\" BETWEEN -180 AND 180");

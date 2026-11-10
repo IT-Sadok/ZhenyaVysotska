@@ -15,7 +15,6 @@ public sealed class ListingTests
         Guid? hostId = null,
         string title = "Loft",
         string? description = "Cozy",
-        string countryCode = "UA",
         string? region = "Ivano-Frankivsk Oblast",
         string city = "Vorokhta",
         string address = "Danyla Halytskoho 1",
@@ -28,7 +27,6 @@ public sealed class ListingTests
             hostId ?? HostId,
             title,
             description,
-            countryCode,
             region,
             city,
             address,
@@ -45,7 +43,6 @@ public sealed class ListingTests
         var listing = CreateListing(
             title: "  Loft  ",
             description: "  Cozy  ",
-            countryCode: " ua ",
             region: "  Ivano-Frankivsk Oblast  ",
             city: " Vorokhta ",
             address: " Danyla Halytskoho 1 ");
@@ -55,7 +52,6 @@ public sealed class ListingTests
         listing.IsActive.ShouldBeTrue();
         listing.Title.ShouldBe("Loft");
         listing.Description.ShouldBe("Cozy");
-        listing.CountryCode.ShouldBe("UA");
         listing.Region.ShouldBe("Ivano-Frankivsk Oblast");
         listing.City.ShouldBe("Vorokhta");
         listing.Address.ShouldBe("Danyla Halytskoho 1");
@@ -124,41 +120,6 @@ public sealed class ListingTests
     [InlineData(null)]
     [InlineData("")]
     [InlineData("   ")]
-    public void Create_ShouldThrow_WhenCountryCodeIsMissing(string? countryCode)
-    {
-        var exception = Should.Throw<ArgumentException>(() => CreateListing(countryCode: countryCode!));
-
-        exception.ParamName.ShouldBe("countryCode");
-    }
-
-    [Theory]
-    [InlineData("U")]
-    [InlineData("UKR")]
-    [InlineData("U1")]
-    [InlineData("УК")]
-    [InlineData("U A")]
-    public void Create_ShouldThrow_WhenCountryCodeHasInvalidFormat(string countryCode)
-    {
-        var exception = Should.Throw<ArgumentException>(() => CreateListing(countryCode: countryCode));
-
-        exception.ParamName.ShouldBe("countryCode");
-    }
-
-    [Theory]
-    [InlineData("ua", "UA")]
-    [InlineData(" pl ", "PL")]
-    [InlineData("Us", "US")]
-    public void Create_ShouldNormalizeCountryCodeToUpperCase_WhenCountryCodeIsValid(string input, string expected)
-    {
-        var listing = CreateListing(countryCode: input);
-
-        listing.CountryCode.ShouldBe(expected);
-    }
-
-    [Theory]
-    [InlineData(null)]
-    [InlineData("")]
-    [InlineData("   ")]
     public void Create_ShouldStoreNullRegion_WhenRegionIsBlank(string? region)
     {
         var listing = CreateListing(region: region);
@@ -170,7 +131,7 @@ public sealed class ListingTests
     public void Create_ShouldThrowArgumentNull_WhenLocationIsNull()
     {
         var exception = Should.Throw<ArgumentNullException>(() =>
-            Listing.Create(HostId, "Loft", null, "UA", null, "Vorokhta", "Address 1",
+            Listing.Create(HostId, "Loft", null, null, "Vorokhta", "Address 1",
                 null!, Public, 1500m, 2, CreatedAt));
 
         exception.ParamName.ShouldBe("location");
@@ -180,7 +141,7 @@ public sealed class ListingTests
     public void Create_ShouldThrowArgumentNull_WhenPublicLocationIsNull()
     {
         var exception = Should.Throw<ArgumentNullException>(() =>
-            Listing.Create(HostId, "Loft", null, "UA", null, "Vorokhta", "Address 1",
+            Listing.Create(HostId, "Loft", null, null, "Vorokhta", "Address 1",
                 Exact, null!, 1500m, 2, CreatedAt));
 
         exception.ParamName.ShouldBe("publicLocation");
@@ -201,26 +162,13 @@ public sealed class ListingTests
         var listing = CreateListing();
 
         Should.Throw<ArgumentException>(() =>
-            listing.Update("New title", null, "PL", "Lesser Poland", "Krakow", "Rynek 1",
+            listing.Update("New title", null, "Lesser Poland", "Krakow", "Rynek 1",
                 pricePerNight: 0m, maxGuests: 4));
 
         listing.Title.ShouldBe("Loft");
-        listing.CountryCode.ShouldBe("UA");
         listing.Region.ShouldBe("Ivano-Frankivsk Oblast");
         listing.City.ShouldBe("Vorokhta");
         listing.PricePerNight.ShouldBe(1500m);
-    }
-
-    [Fact]
-    public void Update_ShouldKeepOldValues_WhenCountryCodeHasInvalidFormat()
-    {
-        var listing = CreateListing();
-
-        Should.Throw<ArgumentException>(() =>
-            listing.Update("New title", null, "POL", null, "Krakow", "Rynek 1", 2000m, 4));
-
-        listing.Title.ShouldBe("Loft");
-        listing.CountryCode.ShouldBe("UA");
     }
 
     [Fact]
@@ -228,9 +176,8 @@ public sealed class ListingTests
     {
         var listing = CreateListing();
 
-        listing.Update("Studio", null, "pl", null, "Krakow", "Rynek 1", 2000m, 3);
+        listing.Update("Studio", null, null, "Krakow", "Rynek 1", 2000m, 3);
 
-        listing.CountryCode.ShouldBe("PL");
         listing.Region.ShouldBeNull();
         listing.City.ShouldBe("Krakow");
         listing.Location.ShouldBe(Exact);

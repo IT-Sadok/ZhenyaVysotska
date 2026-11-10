@@ -19,7 +19,7 @@ public sealed class ListingEndpointsTests : ApiTestBase
     private static ListingRequest CreateRequest(decimal price = 1000m)
     {
         return new ListingRequest(
-            "Loft", "Cozy loft", "UA", "Kyiv", "Kyiv", "Khreshchatyk 1", KyivLatitude, KyivLongitude, price, 4);
+            "Loft", "Cozy loft", "Kyiv", "Kyiv", "Khreshchatyk 1", KyivLatitude, KyivLongitude, price, 4);
     }
 
     private async Task<PagedResult<PublicListingDto>> SearchAsync(string query = "")
@@ -106,7 +106,7 @@ public sealed class ListingEndpointsTests : ApiTestBase
         using var host = await CreateUserClientAsync("host@test.com", Roles.Host);
         var listing = await CreateListingAsync(host);
         var update = new ListingRequest(
-            "Sea view", null, "UA", "Odesa Oblast", "Odesa", "Deribasivska 1", 46.4825, 30.7233, 2500m, 6);
+            "Sea view", null, "Odesa Oblast", "Odesa", "Deribasivska 1", 46.4825, 30.7233, 2500m, 6);
 
         var response = await host.PutAsJsonAsync($"/api/listings/{listing.Id}", update);
 
@@ -149,7 +149,6 @@ public sealed class ListingEndpointsTests : ApiTestBase
         {
             ["title"] = "Loft",
             ["description"] = "Cozy loft",
-            ["countryCode"] = "UA",
             ["region"] = "Kyiv",
             ["city"] = "Kyiv",
             ["address"] = "Khreshchatyk 1",
@@ -178,33 +177,6 @@ public sealed class ListingEndpointsTests : ApiTestBase
         await response.ShouldHaveStatusAsync(HttpStatusCode.BadRequest);
         (await response.ReadErrorCodesAsync()).ShouldContain(ListingErrors.LocationRequired.Code);
         (await SearchAsync()).TotalCount.ShouldBe(0);
-    }
-
-    [Fact]
-    public async Task CreateListing_ShouldReturnInvalidCountryCode_WhenCountryCodeIsMissing()
-    {
-        using var host = await CreateUserClientAsync("host@test.com", Roles.Host);
-
-        var response = await host.PostAsJsonAsync("/api/listings", RawRequest(omit: "countryCode"));
-
-        await response.ShouldHaveStatusAsync(HttpStatusCode.BadRequest);
-        (await response.ReadErrorCodesAsync()).ShouldContain(ListingErrors.InvalidCountryCode.Code);
-    }
-
-    [Theory]
-    [InlineData("XX")]
-    [InlineData("UK")]
-    [InlineData("UKR")]
-    public async Task CreateListing_ShouldReturnInvalidCountryCode_WhenCodeIsNotIsoAlpha2(string countryCode)
-    {
-        using var host = await CreateUserClientAsync("host@test.com", Roles.Host);
-        var request = RawRequest();
-        request["countryCode"] = countryCode;
-
-        var response = await host.PostAsJsonAsync("/api/listings", request);
-
-        await response.ShouldHaveStatusAsync(HttpStatusCode.BadRequest);
-        (await response.ReadErrorCodesAsync()).ShouldContain(ListingErrors.InvalidCountryCode.Code);
     }
 
     [Fact]

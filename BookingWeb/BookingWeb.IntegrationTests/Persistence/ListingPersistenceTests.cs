@@ -63,7 +63,7 @@ public sealed class ListingPersistenceTests : ApiTestBase
         var listing = await CreateListingAsync(host);
         var before = await ReadStoredLocationAsync(listing.Id);
         var update = new ListingRequest(
-            "Sea view", null, "UA", "Odesa Oblast", "Odesa", "Deribasivska 1", 46.4825, 30.7233, 2500m, 6);
+            "Sea view", null, "Odesa Oblast", "Odesa", "Deribasivska 1", 46.4825, 30.7233, 2500m, 6);
 
         var response = await host.PutAsJsonAsync($"/api/listings/{listing.Id}", update);
 
@@ -95,7 +95,6 @@ public sealed class ListingPersistenceTests : ApiTestBase
     [Theory]
     [InlineData("""UPDATE "Listings" SET "Latitude" = 91""", "CK_Listings_Latitude_Range")]
     [InlineData("""UPDATE "Listings" SET "PublicLongitude" = -181""", "CK_Listings_PublicLongitude_Range")]
-    [InlineData("""UPDATE "Listings" SET "CountryCode" = 'ua'""", "CK_Listings_CountryCode_Format")]
     public async Task RawUpdate_ShouldBeRejectedByCheckConstraint_WhenValueBypassesDomain(
         string sql, string constraint)
     {

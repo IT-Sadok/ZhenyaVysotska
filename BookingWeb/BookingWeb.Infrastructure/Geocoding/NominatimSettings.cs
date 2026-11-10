@@ -11,6 +11,8 @@ public sealed class NominatimSettings
     public string UserAgent { get; init; } = string.Empty;
 
     public string AcceptLanguage { get; init; } = "uk,en";
+    
+    public string CountryCodes { get; init; } = "ua";
 
     public int TimeoutSeconds { get; init; } = 5;
 

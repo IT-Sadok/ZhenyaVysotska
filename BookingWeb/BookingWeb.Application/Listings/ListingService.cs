@@ -36,7 +36,6 @@ public sealed class ListingService : IListingService
             hostId,
             request.Title,
             request.Description,
-            request.CountryCode,
             request.Region,
             request.City,
             request.Address,
@@ -108,7 +107,6 @@ public sealed class ListingService : IListingService
         listing.Update(
             request.Title,
             request.Description,
-            request.CountryCode,
             request.Region,
             request.City,
             request.Address,

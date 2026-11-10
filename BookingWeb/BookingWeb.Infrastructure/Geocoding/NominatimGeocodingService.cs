@@ -2,7 +2,6 @@ using System.Globalization;
 using System.Net.Http.Json;
 using System.Text;
 using System.Text.Json;
-using BookingWeb.Application.Common.Constants;
 using BookingWeb.Application.Geocoding;
 using BookingWeb.Application.Interfaces;
 using BookingWeb.Application.Results;
@@ -45,7 +44,7 @@ public sealed class NominatimGeocodingService : IGeocodingService
         }
 
         var normalized = NormalizeQuery(query);
-        var cacheKey = $"geocoding:search:{settings.AcceptLanguage}:{normalized.ToLowerInvariant()}";
+        var cacheKey = $"geocoding:search:{settings.AcceptLanguage}:{settings.CountryCodes}:{normalized.ToLowerInvariant()}";
 
         if (_cache.TryGetValue(cacheKey, out IReadOnlyList<GeocodingCandidateDto>? cached))
         {
@@ -55,6 +54,11 @@ public sealed class NominatimGeocodingService : IGeocodingService
         var url = $"search?format=jsonv2&limit={settings.MaxSearchResults}" +
                   $"&accept-language={Uri.EscapeDataString(settings.AcceptLanguage)}" +
                   $"&q={Uri.EscapeDataString(normalized)}";
+
+        if (!string.IsNullOrWhiteSpace(settings.CountryCodes))
+        {
+            url += $"&countrycodes={Uri.EscapeDataString(settings.CountryCodes)}";
+        }
 
         var response = await GetAsync<NominatimPlace[]>(url, ct);
         if (response.IsFailure)
@@ -181,13 +185,10 @@ public sealed class NominatimGeocodingService : IGeocodingService
             .Select(key => address.GetValueOrDefault(key))
             .FirstOrDefault(value => !string.IsNullOrWhiteSpace(value));
 
-        var countryCode = address.GetValueOrDefault("country_code")?.ToUpperInvariant();
-
         return new ReverseGeocodingDto(
             response.DisplayName!,
             city,
-            address.GetValueOrDefault("state"),
-            countryCode is not null && CountryCodes.IsValid(countryCode) ? countryCode : null);
+            address.GetValueOrDefault("state"));
     }
 
     private static double ParseDouble(string value) => double.Parse(value, CultureInfo.InvariantCulture);

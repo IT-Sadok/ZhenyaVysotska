@@ -15,7 +15,7 @@ public sealed class MappingConfigTests
 
     private static Listing CreateListing(Guid? hostId = null, string? description = "Cozy", string? region = "Kyiv") =>
         Listing.Create(
-            hostId ?? Guid.NewGuid(), "Loft", description, "UA", region, "Kyiv", "Khreshchatyk 1",
+            hostId ?? Guid.NewGuid(), "Loft", description, region, "Kyiv", "Khreshchatyk 1",
             location: Exact, publicLocation: Public, 1500m, 2, DateTimeOffset.UtcNow);
 
     [Fact]
@@ -83,7 +83,6 @@ public sealed class MappingConfigTests
         dto.HostId.ShouldBe(hostId);
         dto.Title.ShouldBe("Loft");
         dto.Description.ShouldBe("Cozy");
-        dto.CountryCode.ShouldBe("UA");
         dto.Region.ShouldBe("Kyiv");
         dto.City.ShouldBe("Kyiv");
         dto.Latitude.ShouldBe(Public.Latitude);
