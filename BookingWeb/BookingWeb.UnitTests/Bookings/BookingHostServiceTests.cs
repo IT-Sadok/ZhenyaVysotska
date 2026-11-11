@@ -27,9 +27,9 @@ public sealed class BookingServiceHostTests
     private Booking SetupBookingOnHostListing(Guid? listingId = null)
     {
         var listing = Listing.Create(
-            _hostId, "Loft", null, "UA", "Kyiv", "Kyiv", "Khreshchatyk 1",
+            _hostId, "Loft", null, "Kyiv", "Kyiv", "Khreshchatyk 1",
             location: new GeoPoint(50.4501, 30.5234), publicLocation: new GeoPoint(50.4530, 30.5260),
-            "Europe/Kyiv", 1000m, 4, Now);
+            1000m, 4, Now);
         _listings
             .Setup(repository => repository.GetByIdAsync(listing.Id, It.IsAny<CancellationToken>()))
             .ReturnsAsync(listing);

@@ -4,6 +4,7 @@ using System.Net.Http.Json;
 using BookingWeb.Application.Auth.Requests;
 using BookingWeb.Application.Auth.Responses;
 using BookingWeb.Application.Bookings.Requests;
+using BookingWeb.Application.Common;
 using BookingWeb.Application.Listings;
 using BookingWeb.Application.Listings.Requests;
 using BookingWeb.Domain;
@@ -20,8 +21,10 @@ public abstract class ApiTestBase : IAsyncLifetime
     protected ApiTestBase(ApiFactory factory)
     {
         Factory = factory;
-        Client = factory.CreateClient();
+        Client = CreateClient();
     }
+    
+    protected IPAddress ClientIp { get; } = new(Guid.NewGuid().ToByteArray());
 
     protected ApiFactory Factory { get; }
     
@@ -66,7 +69,8 @@ public abstract class ApiTestBase : IAsyncLifetime
         return LoginAsync(ApiFactory.AdminEmail, ApiFactory.AdminPassword);
     }
     
-    protected static DateOnly Today => DateOnly.FromDateTime(DateTime.UtcNow);
+    // Booking rules use the Kyiv date; UtcNow would be "yesterday" from 21:00/22:00 UTC and make tests flaky.
+    protected static DateOnly Today => TimeProvider.System.GetPlatformToday();
     
     protected async Task<HttpClient> CreateUserClientAsync(string email, string role)
     {
@@ -83,7 +87,7 @@ public abstract class ApiTestBase : IAsyncLifetime
         double longitude = KyivLongitude)
     {
         var request = new ListingRequest(
-            "Loft", "Cozy loft", "UA", "Kyiv", city, "Khreshchatyk 1", latitude, longitude, pricePerNight, maxGuests);
+            "Loft", "Cozy loft", "Kyiv", city, "Khreshchatyk 1", latitude, longitude, pricePerNight, maxGuests);
 
         var response = await hostClient.PostAsJsonAsync("/api/listings", request);
 
@@ -100,8 +104,15 @@ public abstract class ApiTestBase : IAsyncLifetime
     
     protected HttpClient CreateAuthorizedClient(string accessToken)
     {
-        var client = Factory.CreateClient();
+        var client = CreateClient();
         client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
+        return client;
+    }
+
+    protected HttpClient CreateClient(IPAddress? ip = null)
+    {
+        var client = Factory.CreateClient();
+        client.DefaultRequestHeaders.Add(TestClientIpStartupFilter.HeaderName, (ip ?? ClientIp).ToString());
         return client;
     }
 }

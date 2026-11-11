@@ -1,7 +1,3 @@
-using System;
-using System.Collections.Generic;
-using System.Threading;
-using System.Threading.Tasks;
 using BookingWeb.Application.Listings.Requests;
 using BookingWeb.Application.Models;
 using BookingWeb.Application.Results;

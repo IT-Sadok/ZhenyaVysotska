@@ -4,6 +4,8 @@ using BookingWeb.Infrastructure.Geocoding;
 using BookingWeb.Infrastructure.Identity;
 using BookingWeb.Infrastructure.Persistence;
 using BookingWeb.Infrastructure.Persistence.Repositories;
+using Microsoft.AspNetCore.TestHost;
+using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.DependencyInjection;
 using Shouldly;
 
@@ -53,6 +55,19 @@ public sealed class DependencyInjectionTests
         var b = second.ServiceProvider.GetRequiredService<IJwtTokenGenerator>();
 
         a.ShouldBeSameAs(b);
+    }
+
+    [Fact]
+    public void SharedMemoryCache_ShouldAcceptEntriesWithoutSize_WhenSomeoneAddsItNextToGeocodingCache()
+    {
+        using var factory = _factory.WithWebHostBuilder(builder =>
+            builder.ConfigureTestServices(services => services.AddMemoryCache()));
+
+        var shared = factory.Services.GetRequiredService<IMemoryCache>();
+        var geocoding = factory.Services.GetRequiredKeyedService<IMemoryCache>(NominatimGeocodingService.CacheKey);
+
+        Should.NotThrow(() => shared.Set("some-feature:key", "value"));
+        shared.ShouldNotBeSameAs(geocoding);
     }
 
     [Fact]

@@ -15,7 +15,4 @@ public static class ListingErrors
 
     public static readonly Error LocationRequired =
         new("Listing.LocationRequired", "Latitude and longitude are required.");
-
-    public static readonly Error InvalidCountryCode =
-        new("Listing.InvalidCountryCode", "Country code must be an ISO 3166-1 alpha-2 code.");
 }

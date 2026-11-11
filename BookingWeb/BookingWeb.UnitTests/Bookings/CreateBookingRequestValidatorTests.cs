@@ -33,19 +33,21 @@ public sealed class CreateBookingRequestValidatorTests
     }
 
     [Fact]
-    public void Validate_ShouldFail_WhenCheckInIsInThePastEverywhereOnEarth()
+    public void Validate_ShouldFail_WhenCheckInIsYesterdayInKyiv()
     {
-        var request = CreateValidRequest() with { CheckIn = Today.AddDays(-2) };
+        var request = CreateValidRequest() with { CheckIn = Today.AddDays(-1) };
 
         _validator.TestValidate(request).ShouldHaveValidationErrorFor(x => x.CheckIn);
     }
 
     [Fact]
-    public void Validate_ShouldPass_WhenCheckInIsYesterdayInUtcButTodaySomewhereOnEarth()
+    public void Validate_ShouldFail_WhenCheckInIsTodayInUtcButYesterdayInKyiv()
     {
-        var request = CreateValidRequest() with { CheckIn = Today.AddDays(-1) };
+        // 22:30 UTC on Feb 28 is already 00:30 on Mar 1 in Kyiv (UTC+2 in winter).
+        var validator = new CreateBookingRequestValidator(new FixedTimeProvider(new DateTimeOffset(2026, 2, 28, 22, 30, 0, TimeSpan.Zero)));
+        var request = CreateValidRequest() with { CheckIn = new DateOnly(2026, 2, 28) };
 
-        _validator.TestValidate(request).ShouldNotHaveValidationErrorFor(x => x.CheckIn);
+        validator.TestValidate(request).ShouldHaveValidationErrorFor(x => x.CheckIn);
     }
 
     [Fact]

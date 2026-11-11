@@ -1,4 +1,3 @@
-using BookingWeb.Application.Common.Constants;
 using BookingWeb.Application.Listings.Requests;
 using BookingWeb.Domain.ValueObjects;
 using FluentValidation;
@@ -11,12 +10,6 @@ public sealed class ListingRequestValidator : AbstractValidator<ListingRequest>
     {
         RuleFor(x => x.Title).NotEmpty().MaximumLength(200);
         RuleFor(x => x.Description).MaximumLength(2000);
-        RuleFor(x => x.CountryCode)
-            .NotEmpty()
-            .WithErrorCode(ListingErrors.InvalidCountryCode.Code)
-            .Must(CountryCodes.IsValid)
-            .WithErrorCode(ListingErrors.InvalidCountryCode.Code)
-            .WithMessage("Country code must be an ISO 3166-1 alpha-2 code, e.g. UA, PL, US.");
         RuleFor(x => x.Region).MaximumLength(100);
         RuleFor(x => x.City).NotEmpty().MaximumLength(100);
         RuleFor(x => x.Address).NotEmpty().MaximumLength(300);

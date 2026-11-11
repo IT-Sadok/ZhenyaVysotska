@@ -41,9 +41,8 @@ public sealed class BookingService : IBookingService
             return BookingErrors.OwnListing;
         }
 
-        // The validator only rejects dates that are in the past everywhere on Earth;
-        // the exact check needs the listing's time zone.
-        if (request.CheckIn < _timeProvider.GetLocalDate(listing.TimeZoneId))
+        // Also checked by the validator; repeated here so the rule holds for any caller of the service.
+        if (request.CheckIn < _timeProvider.GetPlatformToday())
         {
             return BookingErrors.CheckInInPast;
         }
@@ -148,13 +147,13 @@ public sealed class BookingService : IBookingService
             return BookingErrors.ListingNotFound;
         }
 
-        var listingToday = _timeProvider.GetLocalDate(listing.TimeZoneId);
-        if (!booking.CanBeCancelledOn(listingToday))
+        var today = _timeProvider.GetPlatformToday();
+        if (!booking.CanBeCancelledOn(today))
         {
             return BookingErrors.CannotBeCancelled;
         }
 
-        booking.Cancel(_timeProvider.GetUtcNow(), listingToday, canceller);
+        booking.Cancel(_timeProvider.GetUtcNow(), today, canceller);
         await _unitOfWork.SaveChangesAsync(ct);
 
         return booking.Adapt<BookingDto>();

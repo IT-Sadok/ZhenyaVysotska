@@ -16,22 +16,19 @@ public sealed class ListingService : IListingService
     private readonly IUnitOfWork _unitOfWork;
     private readonly TimeProvider _timeProvider;
     private readonly ILocationObfuscator _locationObfuscator;
-    private readonly ITimeZoneResolver _timeZoneResolver;
 
     public ListingService(
         IListingRepository listingRepository, 
         IBookingRepository bookingRepository,
         IUnitOfWork unitOfWork,
         TimeProvider timeProvider,
-        ILocationObfuscator locationObfuscator,
-        ITimeZoneResolver timeZoneResolver)
+        ILocationObfuscator locationObfuscator)
     {
         _listingRepository = listingRepository;
         _bookingRepository = bookingRepository;
         _unitOfWork = unitOfWork;
         _timeProvider = timeProvider;
         _locationObfuscator = locationObfuscator;
-        _timeZoneResolver = timeZoneResolver;
     }
     
     public async Task<Result<HostListingDto>> CreateAsync(
@@ -43,13 +40,11 @@ public sealed class ListingService : IListingService
             hostId,
             request.Title,
             request.Description,
-            request.CountryCode,
             request.Region,
             request.City,
             request.Address,
             location: location,
             publicLocation: _locationObfuscator.Obfuscate(location),
-            timeZoneId: _timeZoneResolver.Resolve(location),
             request.PricePerNight,
             request.MaxGuests,
             _timeProvider.GetUtcNow());
@@ -114,7 +109,6 @@ public sealed class ListingService : IListingService
         listing.Update(
             request.Title,
             request.Description,
-            request.CountryCode,
             request.Region,
             request.City,
             request.Address,
@@ -124,10 +118,7 @@ public sealed class ListingService : IListingService
         var location = ToGeoPoint(request);
         if (location != listing.Location)
         {
-            listing.SetLocation(
-                location,
-                _locationObfuscator.Obfuscate(location),
-                _timeZoneResolver.Resolve(location));
+            listing.SetLocation(location, _locationObfuscator.Obfuscate(location));
         }
         
         await _unitOfWork.SaveChangesAsync(ct);
@@ -144,7 +135,7 @@ public sealed class ListingService : IListingService
             return ListingErrors.NotFound;
         }
 
-        var today = _timeProvider.GetLocalDate(listing.TimeZoneId);
+        var today = _timeProvider.GetPlatformToday();
         if (await _bookingRepository.HasUpcomingForListingAsync(listing.Id, today, ct))
         {
             return ListingErrors.HasUpcomingBookings;

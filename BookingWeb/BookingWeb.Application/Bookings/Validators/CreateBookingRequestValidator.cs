@@ -11,9 +11,9 @@ public sealed class CreateBookingRequestValidator : AbstractValidator<CreateBook
         RuleFor(x=> x.ListingId).NotEmpty();
         
         RuleFor(x => x.CheckIn)
-            .Must(checkIn => checkIn >= timeProvider.GetEarliestDateOnEarth())
+            .Must(checkIn => checkIn >= timeProvider.GetPlatformToday())
             .WithMessage("CheckIn can't be in the past.")
-            .Must(checkIn => checkIn <= timeProvider.GetUtcNowDateOnly().AddDays(BookingRules.MaxDaysAhead))
+            .Must(checkIn => checkIn <= timeProvider.GetPlatformToday().AddDays(BookingRules.MaxDaysAhead))
             .WithMessage($"CheckIn can be at most {BookingRules.MaxDaysAhead} days ahead.");
 
         RuleFor(x => x.CheckOut)

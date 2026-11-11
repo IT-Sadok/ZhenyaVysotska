@@ -97,6 +97,22 @@ public sealed class ListingSearchEndpointsTests : ApiTestBase
     }
 
     [Fact]
+    public async Task Map_ShouldFindListingInNewArea_WhenHostMovesIt()
+    {
+        const string lvivBox = "minLat=49.7&minLng=23.9&maxLat=50.0&maxLng=24.2";
+        using var host = await CreateUserClientAsync("host@test.com", Roles.Host);
+        var listing = await CreateListingAsync(host);
+        var moved = new ListingRequest(
+            "Loft", "Cozy loft", "Lviv Oblast", "Lviv", "Rynok Square 1", LvivLatitude, LvivLongitude, 1000m, 4);
+
+        var response = await host.PutAsJsonAsync($"/api/listings/{listing.Id}", moved);
+
+        await response.ShouldHaveStatusAsync(HttpStatusCode.OK);
+        (await GetMapAsync(lvivBox)).Markers.Select(marker => marker.Id).ShouldBe([listing.Id]);
+        (await GetMapAsync(KyivBox)).Markers.ShouldBeEmpty();
+    }
+
+    [Fact]
     public async Task Map_ShouldFindListingByPublicPoint_WhenPointLiesExactlyOnBoxEdge()
     {
         using var host = await CreateUserClientAsync("host@test.com", Roles.Host);
@@ -163,7 +179,7 @@ public sealed class ListingSearchEndpointsTests : ApiTestBase
         using var host = await CreateUserClientAsync("host@test.com", Roles.Host);
         var created = await CreateListingAsync(host);
         var update = new ListingRequest(
-            "Loft", "Cozy loft", "UA", "Lviv Oblast", "Lviv", "Rynok 1", LvivLatitude, LvivLongitude, 1000m, 4);
+            "Loft", "Cozy loft", "Lviv Oblast", "Lviv", "Rynok 1", LvivLatitude, LvivLongitude, 1000m, 4);
 
         await (await host.PutAsJsonAsync($"/api/listings/{created.Id}", update)).ShouldHaveStatusAsync(HttpStatusCode.OK);
 
@@ -179,7 +195,7 @@ public sealed class ListingSearchEndpointsTests : ApiTestBase
         using var host = await CreateUserClientAsync("host@test.com", Roles.Host);
         var created = await CreateListingAsync(host);
         var update = new ListingRequest(
-            "Renamed", null, "UA", "Kyiv", "Kyiv", "Khreshchatyk 1", KyivLatitude, KyivLongitude, 1200m, 4);
+            "Renamed", null, "Kyiv", "Kyiv", "Khreshchatyk 1", KyivLatitude, KyivLongitude, 1200m, 4);
 
         await (await host.PutAsJsonAsync($"/api/listings/{created.Id}", update)).ShouldHaveStatusAsync(HttpStatusCode.OK);
 

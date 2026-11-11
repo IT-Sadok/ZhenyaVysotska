@@ -13,13 +13,13 @@ namespace BookingWeb.Infrastructure.Migrations
         {
             migrationBuilder.Sql("""DROP INDEX "IX_Listings_City_Lower";""");
 
-            migrationBuilder.AddColumn<string>(
-                name: "CountryCode",
-                table: "Listings",
-                type: "character(2)",
-                fixedLength: true,
-                maxLength: 2,
-                nullable: false);
+            // Learning project: there is no production data. Existing listings have no
+            // coordinates and there is no source to backfill them from, so the table is
+            // cleared explicitly before adding NOT NULL columns.
+            migrationBuilder.Sql("""DELETE FROM "Listings";""");
+
+            migrationBuilder.AlterDatabase()
+                .Annotation("Npgsql:PostgresExtension:postgis", ",,");
 
             migrationBuilder.AddColumn<double>(
                 name: "Latitude",
@@ -61,16 +61,18 @@ namespace BookingWeb.Infrastructure.Migrations
                 stored: true);
 
             migrationBuilder.CreateIndex(
+                name: "IX_Listings_CreatedAtUtc_Active",
+                table: "Listings",
+                columns: new[] { "CreatedAtUtc", "Id" },
+                descending: new[] { true, false },
+                filter: "\"IsActive\"");
+
+            migrationBuilder.CreateIndex(
                 name: "IX_Listings_PublicGeom_Active",
                 table: "Listings",
                 column: "PublicGeom",
                 filter: "\"IsActive\"")
                 .Annotation("Npgsql:IndexMethod", "gist");
-
-            migrationBuilder.AddCheckConstraint(
-                name: "CK_Listings_CountryCode_Format",
-                table: "Listings",
-                sql: "\"CountryCode\" ~ '^[A-Z]{2}$'");
 
             migrationBuilder.AddCheckConstraint(
                 name: "CK_Listings_Latitude_Range",
@@ -99,11 +101,11 @@ namespace BookingWeb.Infrastructure.Migrations
             migrationBuilder.Sql("""CREATE INDEX "IX_Listings_City_Lower" ON "Listings" (lower("City"));""");
 
             migrationBuilder.DropIndex(
-                name: "IX_Listings_PublicGeom_Active",
+                name: "IX_Listings_CreatedAtUtc_Active",
                 table: "Listings");
 
-            migrationBuilder.DropCheckConstraint(
-                name: "CK_Listings_CountryCode_Format",
+            migrationBuilder.DropIndex(
+                name: "IX_Listings_PublicGeom_Active",
                 table: "Listings");
 
             migrationBuilder.DropCheckConstraint(
@@ -127,10 +129,6 @@ namespace BookingWeb.Infrastructure.Migrations
                 table: "Listings");
 
             migrationBuilder.DropColumn(
-                name: "CountryCode",
-                table: "Listings");
-
-            migrationBuilder.DropColumn(
                 name: "Latitude",
                 table: "Listings");
 
@@ -149,6 +147,9 @@ namespace BookingWeb.Infrastructure.Migrations
             migrationBuilder.DropColumn(
                 name: "Region",
                 table: "Listings");
+
+            migrationBuilder.AlterDatabase()
+                .OldAnnotation("Npgsql:PostgresExtension:postgis", ",,");
         }
     }
 }

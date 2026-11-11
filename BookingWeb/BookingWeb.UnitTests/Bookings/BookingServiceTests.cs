@@ -40,12 +40,12 @@ public sealed class BookingServiceTests
             new FixedTimeProvider(utcNow));
     }
     
-    private static Listing CreateListing(Guid? hostId = null, int maxGuests = 4, string timeZoneId = "Europe/Kyiv")
+    private static Listing CreateListing(Guid? hostId = null, int maxGuests = 4)
     {
         return Listing.Create(
-            hostId ?? Guid.NewGuid(), "Loft", null, "UA", "Kyiv", "Kyiv", "Khreshchatyk 1",
+            hostId ?? Guid.NewGuid(), "Loft", null, "Kyiv", "Kyiv", "Khreshchatyk 1",
             location: new GeoPoint(50.4501, 30.5234), publicLocation: new GeoPoint(50.4530, 30.5260),
-            timeZoneId, 1000m, maxGuests, Now);
+            1000m, maxGuests, Now);
     }
 
     private void SetupListing(Listing listing)
@@ -162,46 +162,46 @@ public sealed class BookingServiceTests
         result.Error.ShouldBe(BookingErrors.NotFound);
     }
 
-    // Tokyo is UTC+9: at 16:00 UTC on Mar 9 it is already 01:00 on Mar 10 there.
-    private static readonly DateTimeOffset TokyoJustAfterMidnightOnCheckInDay = new(2026, 3, 9, 16, 0, 0, TimeSpan.Zero);
+    // Kyiv is UTC+2 in March (before DST): 22:30 UTC on Mar 9 is already 00:30 on Mar 10 in Kyiv.
+    private static readonly DateTimeOffset KyivJustAfterMidnightOnCheckInDay = new(2026, 3, 9, 22, 30, 0, TimeSpan.Zero);
 
-    // Honolulu is UTC-10: at 06:00 UTC on Mar 10 it is still 20:00 on Mar 9 there.
-    private static readonly DateTimeOffset HonoluluEveningBeforeCheckInDay = new(2026, 3, 10, 6, 0, 0, TimeSpan.Zero);
+    // 21:30 UTC on Mar 9 is 23:30 on Mar 9 in Kyiv: the check-in day has not started yet.
+    private static readonly DateTimeOffset KyivEveningBeforeCheckInDay = new(2026, 3, 9, 21, 30, 0, TimeSpan.Zero);
 
     [Fact]
-    public async Task Create_ShouldReturnCheckInInPast_WhenCheckInIsBeforeTodayInListingTimeZone()
+    public async Task Create_ShouldReturnCheckInInPast_WhenCheckInIsYesterdayInKyivButTodayInUtc()
     {
-        var listing = CreateListing(timeZoneId: "Asia/Tokyo");
+        var listing = CreateListing();
         SetupListing(listing);
-        var sut = CreateSut(TokyoJustAfterMidnightOnCheckInDay);
-        var yesterdayInTokyo = CheckIn.AddDays(-1); // still "today" in UTC
+        var sut = CreateSut(KyivJustAfterMidnightOnCheckInDay);
+        var yesterdayInKyiv = CheckIn.AddDays(-1); // still "today" in UTC
 
         var result = await sut.CreateAsync(
-            _guestId, new CreateBookingRequest(listing.Id, yesterdayInTokyo, CheckOut, 2));
+            _guestId, new CreateBookingRequest(listing.Id, yesterdayInKyiv, CheckOut, 2));
 
         result.Error.ShouldBe(BookingErrors.CheckInInPast);
         _bookings.Verify(repository => repository.Add(It.IsAny<Booking>()), Times.Never);
     }
 
     [Fact]
-    public async Task Create_ShouldCreateBooking_WhenCheckInIsTodayInListingTimeZoneButYesterdayInUtc()
+    public async Task Create_ShouldCreateBooking_WhenCheckInIsTodayInKyiv()
     {
-        var listing = CreateListing(timeZoneId: "Pacific/Honolulu");
+        var listing = CreateListing();
         SetupListing(listing);
-        var sut = CreateSut(HonoluluEveningBeforeCheckInDay);
-        var todayInHonolulu = CheckIn.AddDays(-1);
+        var sut = CreateSut(KyivEveningBeforeCheckInDay);
+        var todayInKyiv = CheckIn.AddDays(-1);
 
         var result = await sut.CreateAsync(
-            _guestId, new CreateBookingRequest(listing.Id, todayInHonolulu, CheckOut, 2));
+            _guestId, new CreateBookingRequest(listing.Id, todayInKyiv, CheckOut, 2));
 
         result.IsSuccess.ShouldBeTrue();
     }
 
     [Fact]
-    public async Task Cancel_ShouldReturnCannotBeCancelled_WhenCheckInDayHasStartedInListingTimeZone()
+    public async Task Cancel_ShouldReturnCannotBeCancelled_WhenCheckInDayHasStartedInKyivButNotInUtc()
     {
-        var booking = SetupBookingOfGuest(CreateListing(timeZoneId: "Asia/Tokyo"));
-        var sut = CreateSut(TokyoJustAfterMidnightOnCheckInDay);
+        var booking = SetupBookingOfGuest(CreateListing());
+        var sut = CreateSut(KyivJustAfterMidnightOnCheckInDay);
 
         var result = await sut.CancelAsync(_guestId, booking.Id);
 
@@ -210,10 +210,10 @@ public sealed class BookingServiceTests
     }
 
     [Fact]
-    public async Task Cancel_ShouldCancel_WhenCheckInDayHasNotStartedInListingTimeZone()
+    public async Task Cancel_ShouldCancel_WhenCheckInDayHasNotStartedInKyiv()
     {
-        var booking = SetupBookingOfGuest(CreateListing(timeZoneId: "Pacific/Honolulu"));
-        var sut = CreateSut(HonoluluEveningBeforeCheckInDay);
+        var booking = SetupBookingOfGuest(CreateListing());
+        var sut = CreateSut(KyivEveningBeforeCheckInDay);
 
         var result = await sut.CancelAsync(_guestId, booking.Id);
 

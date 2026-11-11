@@ -12,7 +12,9 @@ namespace BookingWeb.Infrastructure.Migrations
         protected override void Up(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.AlterDatabase()
-                .Annotation("Npgsql:PostgresExtension:btree_gist", ",,");
+                .Annotation("Npgsql:PostgresExtension:btree_gist", ",,")
+                .Annotation("Npgsql:PostgresExtension:postgis", ",,")
+                .OldAnnotation("Npgsql:PostgresExtension:postgis", ",,");
 
             migrationBuilder.CreateTable(
                 name: "Bookings",
@@ -50,15 +52,21 @@ namespace BookingWeb.Infrastructure.Migrations
                 });
 
             migrationBuilder.CreateIndex(
-                name: "IX_Bookings_GuestId_CheckIn",
+                name: "IX_Bookings_GuestId_CheckIn_Id",
                 table: "Bookings",
-                columns: new[] { "GuestId", "CheckIn" });
+                columns: new[] { "GuestId", "CheckIn", "Id" },
+                descending: new[] { false, true, false });
 
             migrationBuilder.CreateIndex(
-                name: "IX_Bookings_ListingId",
+                name: "IX_Bookings_ListingId_CheckIn_Id",
                 table: "Bookings",
-                column: "ListingId");
-            
+                columns: new[] { "ListingId", "CheckIn", "Id" },
+                descending: new[] { false, true, false });
+
+            // Hand-written: EF Core can't model exclusion constraints. Two confirmed bookings of one listing
+            // must not overlap; daterange '[)' excludes CheckOut, so back-to-back stays are allowed.
+            // btree_gist (enabled above) lets the GiST index compare "ListingId" with =.
+            // Down needs no counterpart: DropTable removes the constraint with the table.
             migrationBuilder.Sql("""
                                  ALTER TABLE "Bookings"
                                  ADD CONSTRAINT "EX_Bookings_NoOverlap"
@@ -77,7 +85,9 @@ namespace BookingWeb.Infrastructure.Migrations
                 name: "Bookings");
 
             migrationBuilder.AlterDatabase()
-                .OldAnnotation("Npgsql:PostgresExtension:btree_gist", ",,");
+                .Annotation("Npgsql:PostgresExtension:postgis", ",,")
+                .OldAnnotation("Npgsql:PostgresExtension:btree_gist", ",,")
+                .OldAnnotation("Npgsql:PostgresExtension:postgis", ",,");
         }
     }
 }

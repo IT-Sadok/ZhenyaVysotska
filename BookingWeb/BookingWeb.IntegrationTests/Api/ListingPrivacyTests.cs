@@ -20,7 +20,7 @@ public sealed class ListingPrivacyTests : ApiTestBase
     private async Task<Guid> CreateListingWithKnownAddressAsync(HttpClient host)
     {
         var request = new ListingRequest(
-            "Loft", "Cozy loft", "UA", "Kyiv", "Kyiv", Address, KyivLatitude, KyivLongitude, 1000m, 4);
+            "Loft", "Cozy loft", "Kyiv", "Kyiv", Address, KyivLatitude, KyivLongitude, 1000m, 4);
         var response = await host.PostAsJsonAsync("/api/listings", request);
         await response.ShouldHaveStatusAsync(HttpStatusCode.Created);
 

@@ -1,12 +1,14 @@
+using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
+using System.Net;
 using System.Net.Http.Json;
 using System.Text;
 using System.Text.Json;
-using BookingWeb.Application.Common.Constants;
 using BookingWeb.Application.Geocoding;
 using BookingWeb.Application.Common.Interfaces;
 using BookingWeb.Application.Results;
 using Microsoft.Extensions.Caching.Memory;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
@@ -14,6 +16,8 @@ namespace BookingWeb.Infrastructure.Geocoding;
 
 public sealed class NominatimGeocodingService : IGeocodingService
 {
+    public const string CacheKey = "geocoding";
+
     private static readonly string[] CityKeys = ["city", "town", "village", "municipality"];
 
     private const int ReverseCoordinateDecimals = 5;
@@ -25,7 +29,7 @@ public sealed class NominatimGeocodingService : IGeocodingService
 
     public NominatimGeocodingService(
         HttpClient http,
-        IMemoryCache cache,
+        [FromKeyedServices(CacheKey)] IMemoryCache cache,
         IOptionsMonitor<NominatimSettings> settings,
         ILogger<NominatimGeocodingService> logger)
     {
@@ -39,13 +43,8 @@ public sealed class NominatimGeocodingService : IGeocodingService
         string query, CancellationToken ct = default)
     {
         var settings = _settings.CurrentValue;
-        if (!settings.Enabled)
-        {
-            return GeocodingErrors.Disabled;
-        }
-
         var normalized = NormalizeQuery(query);
-        var cacheKey = $"geocoding:search:{settings.AcceptLanguage}:{normalized.ToLowerInvariant()}";
+        var cacheKey = $"geocoding:search:{settings.AcceptLanguage}:{settings.CountryCodes}:{normalized.ToLowerInvariant()}";
 
         if (_cache.TryGetValue(cacheKey, out IReadOnlyList<GeocodingCandidateDto>? cached))
         {
@@ -56,29 +55,39 @@ public sealed class NominatimGeocodingService : IGeocodingService
                   $"&accept-language={Uri.EscapeDataString(settings.AcceptLanguage)}" +
                   $"&q={Uri.EscapeDataString(normalized)}";
 
-        var response = await GetAsync<NominatimPlace[]>(url, ct);
+        if (!string.IsNullOrWhiteSpace(settings.CountryCodes))
+        {
+            url += $"&countrycodes={Uri.EscapeDataString(settings.CountryCodes)}";
+        }
+
+        var response = await GetAsync<NominatimPlace[]>("search", url, ct);
         if (response.IsFailure)
         {
             return response.Error;
         }
 
-        IReadOnlyList<GeocodingCandidateDto> candidates = response.Value.Select(ToCandidate).ToList();
+        var candidates = new List<GeocodingCandidateDto>(response.Value.Length);
+        foreach (var place in response.Value)
+        {
+            if (!TryToCandidate(place, out var candidate))
+            {
+                _logger.LogWarning("Nominatim search returned a malformed place");
+                return GeocodingErrors.Unavailable;
+            }
+
+            candidates.Add(candidate);
+        }
 
         Store(cacheKey, candidates, candidates.Count == 0 
             ? settings.EmptyResultCacheDuration 
             : settings.CacheDuration);
-        return Result.Success(candidates);
+        return Result.Success<IReadOnlyList<GeocodingCandidateDto>>(candidates);
     }
 
     public async Task<Result<ReverseGeocodingDto>> ReverseAsync(
         double latitude, double longitude, CancellationToken ct = default)
     {
         var settings = _settings.CurrentValue;
-        if (!settings.Enabled)
-        {
-            return GeocodingErrors.Disabled;
-        }
-        
         var lat = FormatCoordinate(latitude);
         var lng = FormatCoordinate(longitude);
         var cacheKey = $"geocoding:reverse:{settings.AcceptLanguage}:{lat}:{lng}";
@@ -92,7 +101,7 @@ public sealed class NominatimGeocodingService : IGeocodingService
                   $"&accept-language={Uri.EscapeDataString(settings.AcceptLanguage)}" +
                   $"&lat={lat}&lon={lng}";
 
-        var response = await GetAsync<NominatimReverseResponse>(url, ct);
+        var response = await GetAsync<NominatimReverseResponse>("reverse", url, ct);
         if (response.IsFailure)
         {
             return response.Error;
@@ -108,15 +117,31 @@ public sealed class NominatimGeocodingService : IGeocodingService
         return address;
     }
 
-    private async Task<Result<T>> GetAsync<T>(string url, CancellationToken ct)
+    // url contains the user's search query / coordinates (PII) - never log it, log only operation.
+    private async Task<Result<T>> GetAsync<T>(string operation, string url, CancellationToken ct)
     {
         try
         {
             using var response = await _http.GetAsync(url, ct);
+           
+            if (response.StatusCode == HttpStatusCode.TooManyRequests)
+            {
+                if (NominatimRateLimitHandler.IsRejectedLocally(response))
+                {
+                    _logger.LogWarning("Nominatim {Operation} request rejected locally: rate limit queue is full",
+                        operation);
+                }
+                else
+                {
+                    _logger.LogError("Nominatim {Operation} returned 429: Nominatim is throttling us", operation);
+                }
+
+                return GeocodingErrors.Busy;
+            }
 
             if (!response.IsSuccessStatusCode)
             {
-                _logger.LogError("Nominatim returned {StatusCode} for {Url}", (int)response.StatusCode, url);
+                _logger.LogError("Nominatim {Operation} returned {StatusCode}", operation, (int)response.StatusCode);
                 return GeocodingErrors.Unavailable;
             }
 
@@ -128,19 +153,14 @@ public sealed class NominatimGeocodingService : IGeocodingService
 
             return body;
         }
-        catch (NominatimRateLimitExceededException)
-        {
-            _logger.LogWarning("Nominatim request rejected: rate limit queue is full");
-            return GeocodingErrors.Busy;
-        }
         catch (TaskCanceledException) when (!ct.IsCancellationRequested)
         {
-            _logger.LogWarning("Nominatim request timed out for {Url}", url);
+            _logger.LogWarning("Nominatim {Operation} request timed out", operation);
             return GeocodingErrors.Unavailable;
         }
         catch (Exception exception) when (exception is HttpRequestException or JsonException)
         {
-            _logger.LogWarning(exception, "Nominatim request failed for {Url}", url);
+            _logger.LogWarning(exception, "Nominatim {Operation} request failed", operation);
             return GeocodingErrors.Unavailable;
         }
     }
@@ -161,16 +181,26 @@ public sealed class NominatimGeocodingService : IGeocodingService
 
         return string.Join(' ', words);
     }
-
-    private static GeocodingCandidateDto ToCandidate(NominatimPlace place)
+    
+    private static bool TryToCandidate(NominatimPlace place, [NotNullWhen(true)] out GeocodingCandidateDto? candidate)
     {
-        var box = place.BoundingBox.Select(ParseDouble).ToArray();
+        candidate = null;
 
-        return new GeocodingCandidateDto(
-            place.DisplayName,
-            ParseDouble(place.Lat),
-            ParseDouble(place.Lon),
-            new GeocodingBoundingBoxDto(MinLat: box[0], MinLng: box[2], MaxLat: box[1], MaxLng: box[3]));
+        if (string.IsNullOrWhiteSpace(place.DisplayName)
+            || !TryParseDouble(place.Lat, out var lat)
+            || !TryParseDouble(place.Lon, out var lng)
+            || place.BoundingBox is not { Length: 4 } box
+            || !TryParseDouble(box[0], out var minLat)
+            || !TryParseDouble(box[1], out var maxLat)
+            || !TryParseDouble(box[2], out var minLng)
+            || !TryParseDouble(box[3], out var maxLng))
+        {
+            return false;
+        }
+
+        candidate = new GeocodingCandidateDto(
+            place.DisplayName, lat, lng, new GeocodingBoundingBoxDto(minLat, minLng, maxLat, maxLng));
+        return true;
     }
 
     private static ReverseGeocodingDto ToAddress(NominatimReverseResponse response)
@@ -181,16 +211,14 @@ public sealed class NominatimGeocodingService : IGeocodingService
             .Select(key => address.GetValueOrDefault(key))
             .FirstOrDefault(value => !string.IsNullOrWhiteSpace(value));
 
-        var countryCode = address.GetValueOrDefault("country_code")?.ToUpperInvariant();
-
         return new ReverseGeocodingDto(
             response.DisplayName!,
             city,
-            address.GetValueOrDefault("state"),
-            countryCode is not null && CountryCodes.IsValid(countryCode) ? countryCode : null);
+            address.GetValueOrDefault("state"));
     }
 
-    private static double ParseDouble(string value) => double.Parse(value, CultureInfo.InvariantCulture);
+    private static bool TryParseDouble(string? value, out double result) =>
+        double.TryParse(value, NumberStyles.Float, CultureInfo.InvariantCulture, out result) && double.IsFinite(result);
 
     internal static string FormatCoordinate(double value) =>
         Math.Round(value, ReverseCoordinateDecimals, MidpointRounding.AwayFromZero)

@@ -12,7 +12,7 @@ public sealed class ListingRequestValidatorTests
     private static ListingRequest CreateValidRequest()
     {
         return new ListingRequest(
-            "Loft Studio", "Cozy", "UA", "Kyiv", "Kyiv", "Khreshchatyk 1", 50.4501, 30.5234, 1500.50m, 2);
+            "Loft Studio", "Cozy", "Kyiv", "Kyiv", "Khreshchatyk 1", 50.4501, 30.5234, 1500.50m, 2);
     }
 
     [Fact]
@@ -93,32 +93,6 @@ public sealed class ListingRequestValidatorTests
 
         _validator.TestValidate(request)
             .ShouldHaveValidationErrorFor(x => x.Region);
-    }
-
-    [Theory]
-    [InlineData(null)]
-    [InlineData("")]
-    [InlineData("U")]
-    [InlineData("UKR")]
-    [InlineData("XX")]
-    [InlineData("UK")]
-    public void Validate_ShouldFailWithInvalidCountryCode_WhenCodeIsMissingOrNotIso(string? countryCode)
-    {
-        var request = CreateValidRequest() with { CountryCode = countryCode! };
-
-        _validator.TestValidate(request)
-            .ShouldHaveValidationErrorFor(x => x.CountryCode)
-            .WithErrorCode(ListingErrors.InvalidCountryCode.Code);
-    }
-
-    [Theory]
-    [InlineData("PL")]
-    [InlineData("us")]
-    public void Validate_ShouldPass_WhenCountryCodeIsIso(string countryCode)
-    {
-        var request = CreateValidRequest() with { CountryCode = countryCode };
-
-        _validator.TestValidate(request).ShouldNotHaveValidationErrorFor(x => x.CountryCode);
     }
 
     [Fact]

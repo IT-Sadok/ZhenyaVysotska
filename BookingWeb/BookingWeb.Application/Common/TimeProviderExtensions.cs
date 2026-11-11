@@ -2,22 +2,16 @@ namespace BookingWeb.Application.Common;
 
 public static class TimeProviderExtensions
 {
-    private static readonly TimeSpan WesternmostUtcOffset = TimeSpan.FromHours(-12);
+    /// <summary>The platform works only in Ukraine, so booking dates are Kyiv calendar dates.</summary>
+    public const string PlatformTimeZoneId = "Europe/Kyiv";
 
-    public static DateOnly GetUtcNowDateOnly(this TimeProvider timeProvider)
+    // Resolved once: the lookup reads the OS time zone database.
+    private static readonly TimeZoneInfo PlatformTimeZone = TimeZoneInfo.FindSystemTimeZoneById(PlatformTimeZoneId);
+
+    /// <summary>Today's date in Kyiv - the "today" of all booking rules.</summary>
+    public static DateOnly GetPlatformToday(this TimeProvider timeProvider)
     {
-        return DateOnly.FromDateTime(timeProvider.GetUtcNow().UtcDateTime);
-    }
-    
-    public static DateOnly GetLocalDate(this TimeProvider timeProvider, string timeZoneId)
-    {
-        var timeZone = TimeZoneInfo.FindSystemTimeZoneById(timeZoneId);
-        var localNow = TimeZoneInfo.ConvertTime(timeProvider.GetUtcNow(), timeZone);
-        return DateOnly.FromDateTime(localNow.DateTime);
-    }
-    
-    public static DateOnly GetEarliestDateOnEarth(this TimeProvider timeProvider)
-    {
-        return DateOnly.FromDateTime(timeProvider.GetUtcNow().ToOffset(WesternmostUtcOffset).DateTime);
+        var kyivNow = TimeZoneInfo.ConvertTime(timeProvider.GetUtcNow(), PlatformTimeZone);
+        return DateOnly.FromDateTime(kyivNow.DateTime);
     }
 }

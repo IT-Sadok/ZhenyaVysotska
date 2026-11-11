@@ -1,6 +1,7 @@
 using BookingWeb.Api;
 using BookingWeb.Api.Extensions;
 using BookingWeb.Api.OpenApi;
+using BookingWeb.Api.RateLimiting;
 using BookingWeb.Api.Validation;
 using BookingWeb.Application;
 using BookingWeb.Infrastructure;
@@ -14,6 +15,8 @@ builder.Services.AddInfrastructure(builder.Configuration);
 
 builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
 builder.Services.AddProblemDetails();
+
+builder.Services.AddApiRateLimiting(builder.Configuration);
 
 builder.Services.AddEndpointGroups(typeof(Program).Assembly);
 
@@ -41,6 +44,7 @@ if (app.Environment.IsDevelopment())
 
 app.UseAuthentication();
 app.UseAuthorization();
+app.UseRateLimiter();
 
 app.MapGroup("/api")
     .WithValidation()

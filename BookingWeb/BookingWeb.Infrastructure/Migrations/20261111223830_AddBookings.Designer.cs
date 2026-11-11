@@ -14,8 +14,8 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace BookingWeb.Infrastructure.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    [Migration("20261103160703_AddListingCreatedAtIndex")]
-    partial class AddListingCreatedAtIndex
+    [Migration("20261111223830_AddBookings")]
+    partial class AddBookings
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -25,8 +25,64 @@ namespace BookingWeb.Infrastructure.Migrations
                 .HasAnnotation("ProductVersion", "10.0.11")
                 .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
+            NpgsqlModelBuilderExtensions.HasPostgresExtension(modelBuilder, "btree_gist");
             NpgsqlModelBuilderExtensions.HasPostgresExtension(modelBuilder, "postgis");
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
+
+            modelBuilder.Entity("BookingWeb.Domain.Entities.Booking", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset?>("CancelledAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("CancelledBy")
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)");
+
+                    b.Property<DateOnly>("CheckIn")
+                        .HasColumnType("date");
+
+                    b.Property<DateOnly>("CheckOut")
+                        .HasColumnType("date");
+
+                    b.Property<DateTimeOffset>("CreatedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("GuestId")
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("Guests")
+                        .HasColumnType("integer");
+
+                    b.Property<Guid>("ListingId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)");
+
+                    b.Property<decimal>("TotalPrice")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("GuestId", "CheckIn", "Id")
+                        .IsDescending(false, true, false);
+
+                    b.HasIndex("ListingId", "CheckIn", "Id")
+                        .IsDescending(false, true, false);
+
+                    b.ToTable("Bookings", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_Bookings_CheckOut_AfterCheckIn", "\"CheckOut\" > \"CheckIn\"");
+
+                            t.HasCheckConstraint("CK_Bookings_Guests_Positive", "\"Guests\" >= 1");
+                        });
+                });
 
             modelBuilder.Entity("BookingWeb.Domain.Entities.Listing", b =>
                 {
@@ -42,12 +98,6 @@ namespace BookingWeb.Infrastructure.Migrations
                         .IsRequired()
                         .HasMaxLength(100)
                         .HasColumnType("character varying(100)");
-
-                    b.Property<string>("CountryCode")
-                        .IsRequired()
-                        .HasMaxLength(2)
-                        .HasColumnType("character(2)")
-                        .IsFixedLength();
 
                     b.Property<DateTimeOffset>("CreatedAtUtc")
                         .HasColumnType("timestamp with time zone");
@@ -126,8 +176,6 @@ namespace BookingWeb.Infrastructure.Migrations
 
                     b.ToTable("Listings", null, t =>
                         {
-                            t.HasCheckConstraint("CK_Listings_CountryCode_Format", "\"CountryCode\" ~ '^[A-Z]{2}$'");
-
                             t.HasCheckConstraint("CK_Listings_Latitude_Range", "\"Latitude\" BETWEEN -90 AND 90");
 
                             t.HasCheckConstraint("CK_Listings_Longitude_Range", "\"Longitude\" BETWEEN -180 AND 180");
@@ -419,6 +467,21 @@ namespace BookingWeb.Infrastructure.Migrations
                     b.HasKey("UserId", "LoginProvider", "Name");
 
                     b.ToTable("AspNetUserTokens", (string)null);
+                });
+
+            modelBuilder.Entity("BookingWeb.Domain.Entities.Booking", b =>
+                {
+                    b.HasOne("BookingWeb.Infrastructure.Identity.ApplicationUser", null)
+                        .WithMany()
+                        .HasForeignKey("GuestId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("BookingWeb.Domain.Entities.Listing", null)
+                        .WithMany()
+                        .HasForeignKey("ListingId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
                 });
 
             modelBuilder.Entity("BookingWeb.Domain.Entities.Listing", b =>

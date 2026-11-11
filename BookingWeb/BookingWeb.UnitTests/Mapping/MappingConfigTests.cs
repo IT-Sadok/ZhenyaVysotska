@@ -16,8 +16,8 @@ public sealed class MappingConfigTests
 
     private static Listing CreateListing(Guid? hostId = null, string? description = "Cozy", string? region = "Kyiv") =>
         Listing.Create(
-            hostId ?? Guid.NewGuid(), "Loft", description, "UA", region, "Kyiv", "Khreshchatyk 1",
-            location: Exact, publicLocation: Public, "Europe/Kyiv", 1500m, 2, DateTimeOffset.UtcNow);
+            hostId ?? Guid.NewGuid(), "Loft", description, region, "Kyiv", "Khreshchatyk 1",
+            location: Exact, publicLocation: Public, 1500m, 2, DateTimeOffset.UtcNow);
 
     [Fact]
     public void RegisterMappings_ShouldProduceValidConfig_WhenCompiled()
@@ -84,14 +84,12 @@ public sealed class MappingConfigTests
         dto.HostId.ShouldBe(hostId);
         dto.Title.ShouldBe("Loft");
         dto.Description.ShouldBe("Cozy");
-        dto.CountryCode.ShouldBe("UA");
         dto.Region.ShouldBe("Kyiv");
         dto.City.ShouldBe("Kyiv");
         dto.Latitude.ShouldBe(Public.Latitude);
         dto.Longitude.ShouldBe(Public.Longitude);
         dto.PricePerNight.ShouldBe(1500m);
         dto.MaxGuests.ShouldBe(2);
-        dto.TimeZoneId.ShouldBe("Europe/Kyiv");
     }
 
     [Fact]
@@ -106,7 +104,6 @@ public sealed class MappingConfigTests
         dto.Longitude.ShouldBe(Exact.Longitude);
         dto.PublicLatitude.ShouldBe(Public.Latitude);
         dto.PublicLongitude.ShouldBe(Public.Longitude);
-        dto.TimeZoneId.ShouldBe("Europe/Kyiv");
         dto.IsActive.ShouldBeTrue();
         dto.CreatedAtUtc.ShouldBe(listing.CreatedAtUtc);
     }

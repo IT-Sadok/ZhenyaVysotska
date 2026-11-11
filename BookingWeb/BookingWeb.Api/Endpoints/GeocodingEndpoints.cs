@@ -1,4 +1,5 @@
 using BookingWeb.Api.Extensions;
+using BookingWeb.Api.RateLimiting;
 using BookingWeb.Application.Common.Constants;
 using BookingWeb.Application.Geocoding.Requests;
 using BookingWeb.Application.Common.Interfaces;
@@ -10,15 +11,15 @@ public sealed class GeocodingEndpoints : IEndpointGroup
     public void MapEndpoints(IEndpointRouteBuilder routes)
     {
         var group = routes.MapGroup("/geocoding")
-            .WithTags("Geocoding")
-            .RequireAuthorization(PolicyNames.HostOnly);
-
+            .WithTags("Geocoding");
+        
         group.MapGet("/search", async (
                 [AsParameters] GeocodingSearchRequest request, IGeocodingService geocoding, CancellationToken ct) =>
             {
                 var result = await geocoding.SearchAsync(request.Q!, ct);
                 return result.Match(Results.Ok);
             })
+            .RequireRateLimiting(RateLimitingExtensions.GeocodingSearchPolicy)
             .WithDescription("Finds places for a \"street, city\" query.");
 
         group.MapGet("/reverse", async (
@@ -27,6 +28,7 @@ public sealed class GeocodingEndpoints : IEndpointGroup
                 var result = await geocoding.ReverseAsync(request.Lat!.Value, request.Lng!.Value, ct);
                 return result.Match(Results.Ok);
             })
-            .WithDescription("Finds city, region and country code for coordinates.");
+            .RequireAuthorization(PolicyNames.HostOnly)
+            .WithDescription("Finds city and region for coordinates.");
     }
 }

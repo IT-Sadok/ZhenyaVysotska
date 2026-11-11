@@ -10,9 +10,6 @@ public static class GeocodingErrors
     public static readonly Error Busy =
         new("Geocoding.Busy", "Too many geocoding requests right now. Try again in a few seconds.", ErrorType.Unavailable);
 
-    public static readonly Error Disabled =
-        new("Geocoding.Disabled", "Geocoding is temporarily disabled.", ErrorType.Unavailable);
-
     public static readonly Error NotFound =
         new("Geocoding.NotFound", "No address found for these coordinates.", ErrorType.NotFound);
 }

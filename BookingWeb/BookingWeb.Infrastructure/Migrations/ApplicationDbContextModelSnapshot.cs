@@ -96,12 +96,6 @@ namespace BookingWeb.Infrastructure.Migrations
                         .HasMaxLength(100)
                         .HasColumnType("character varying(100)");
 
-                    b.Property<string>("CountryCode")
-                        .IsRequired()
-                        .HasMaxLength(2)
-                        .HasColumnType("character(2)")
-                        .IsFixedLength();
-
                     b.Property<DateTimeOffset>("CreatedAtUtc")
                         .HasColumnType("timestamp with time zone");
 
@@ -130,11 +124,6 @@ namespace BookingWeb.Infrastructure.Migrations
                     b.Property<string>("Region")
                         .HasMaxLength(100)
                         .HasColumnType("character varying(100)");
-
-                    b.Property<string>("TimeZoneId")
-                        .IsRequired()
-                        .HasMaxLength(64)
-                        .HasColumnType("character varying(64)");
 
                     b.Property<string>("Title")
                         .IsRequired()
@@ -184,8 +173,6 @@ namespace BookingWeb.Infrastructure.Migrations
 
                     b.ToTable("Listings", null, t =>
                         {
-                            t.HasCheckConstraint("CK_Listings_CountryCode_Format", "\"CountryCode\" ~ '^[A-Z]{2}$'");
-
                             t.HasCheckConstraint("CK_Listings_Latitude_Range", "\"Latitude\" BETWEEN -90 AND 90");
 
                             t.HasCheckConstraint("CK_Listings_Longitude_Range", "\"Longitude\" BETWEEN -180 AND 180");

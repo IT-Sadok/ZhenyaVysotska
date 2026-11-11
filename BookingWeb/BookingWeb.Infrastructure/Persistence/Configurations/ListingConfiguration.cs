@@ -12,7 +12,7 @@ public sealed class ListingConfiguration : IEntityTypeConfiguration<Listing>
     
     public const int Wgs84Srid = 4326;
 
-    public const string CreatedAtActiveIndex = "IX_Listings_CreatedAtUtc_Active";
+    private const string CreatedAtActiveIndex = "IX_Listings_CreatedAtUtc_Active";
 
     public void Configure(EntityTypeBuilder<Listing> builder)
     {
@@ -25,7 +25,6 @@ public sealed class ListingConfiguration : IEntityTypeConfiguration<Listing>
             t.HasCheckConstraint("CK_Listings_Longitude_Range", "\"Longitude\" BETWEEN -180 AND 180");
             t.HasCheckConstraint("CK_Listings_PublicLatitude_Range", "\"PublicLatitude\" BETWEEN -90 AND 90");
             t.HasCheckConstraint("CK_Listings_PublicLongitude_Range", "\"PublicLongitude\" BETWEEN -180 AND 180");
-            t.HasCheckConstraint("CK_Listings_CountryCode_Format", "\"CountryCode\" ~ '^[A-Z]{2}$'");
         });
 
         builder.HasKey(x => x.Id);
@@ -33,12 +32,10 @@ public sealed class ListingConfiguration : IEntityTypeConfiguration<Listing>
 
         builder.Property(l => l.Title).HasMaxLength(200).IsRequired();
         builder.Property(l => l.Description).HasMaxLength(2000);
-        builder.Property(l => l.CountryCode).HasMaxLength(Listing.CountryCodeLength).IsFixedLength().IsRequired();
         builder.Property(l => l.Region).HasMaxLength(100);
         builder.Property(l => l.City).HasMaxLength(100).IsRequired();
         builder.Property(l => l.Address).HasMaxLength(300).IsRequired();
         builder.Property(l => l.PricePerNight).HasPrecision(18, 2);
-        builder.Property(l => l.TimeZoneId).HasMaxLength(Listing.TimeZoneIdMaxLength).IsRequired();
 
         builder.ComplexProperty(l => l.Location, location =>
         {
