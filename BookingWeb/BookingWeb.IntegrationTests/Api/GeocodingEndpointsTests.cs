@@ -171,6 +171,36 @@ public sealed class GeocodingEndpointsTests : ApiTestBase
         (await response.ReadProblemTitleAsync()).ShouldBe(GeocodingErrors.Unavailable.Code);
     }
 
+    public static TheoryData<string> MalformedPlaces => new()
+    {
+        // boundingbox with 3 items instead of 4
+        """[{ "lat": "50.4473", "lon": "30.5225", "display_name": "Київ", "boundingbox": ["50.44", "50.45", "30.52"] }]""",
+        // lat is not a number
+        """[{ "lat": "abc", "lon": "30.5225", "display_name": "Київ", "boundingbox": ["50.44", "50.45", "30.52", "30.53"] }]""",
+        // boundingbox and display_name are missing
+        """[{ "lat": "50.4473", "lon": "30.5225" }]""",
+    };
+
+    [Theory]
+    [MemberData(nameof(MalformedPlaces))]
+    public async Task Search_ShouldReturn503AndNotCacheTheFailure_WhenNominatimReturnsMalformedPlace(string json)
+    {
+        using var host = await CreateHostAsync();
+        Nominatim.RespondWithJson(json);
+
+        var failed = await host.GetAsync(Search("Хрещатик, Київ"));
+
+        await failed.ShouldHaveStatusAsync(HttpStatusCode.ServiceUnavailable);
+        (await failed.ReadProblemTitleAsync()).ShouldBe(GeocodingErrors.Unavailable.Code);
+
+        Nominatim.Reset();
+        Factory.ReplenishNominatimLimit();
+        var retried = await host.GetAsync(Search("Хрещатик, Київ"));
+
+        await retried.ShouldHaveStatusAsync(HttpStatusCode.OK);
+        Nominatim.Requests.Count.ShouldBe(1);
+    }
+
     [Fact]
     public async Task Search_ShouldReturn503Busy_WhenGlobalRateLimitIsExhausted()
     {
@@ -188,6 +218,25 @@ public sealed class GeocodingEndpointsTests : ApiTestBase
 
         await afterRefill.ShouldHaveStatusAsync(HttpStatusCode.OK);
         Nominatim.Requests.Count.ShouldBe(2);
+    }
+
+    [Fact]
+    public async Task Search_ShouldReturn503BusyAndNotCacheTheFailure_WhenNominatimItselfReturns429()
+    {
+        using var host = await CreateHostAsync();
+        Nominatim.RespondWithStatus(HttpStatusCode.TooManyRequests);
+
+        var rejected = await host.GetAsync(Search("Хрещатик, Київ"));
+
+        await rejected.ShouldHaveStatusAsync(HttpStatusCode.ServiceUnavailable);
+        (await rejected.ReadProblemTitleAsync()).ShouldBe(GeocodingErrors.Busy.Code);
+
+        Nominatim.Reset();
+        Factory.ReplenishNominatimLimit();
+        var retried = await host.GetAsync(Search("Хрещатик, Київ"));
+
+        await retried.ShouldHaveStatusAsync(HttpStatusCode.OK);
+        Nominatim.Requests.Count.ShouldBe(1);
     }
 
     [Fact]

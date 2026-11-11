@@ -4,8 +4,6 @@ public sealed class NominatimSettings
 {
     public const string SectionName = "Nominatim";
 
-    public bool Enabled { get; init; } = true;
-
     public string BaseUrl { get; init; } = "https://nominatim.openstreetmap.org/";
     
     public string UserAgent { get; init; } = string.Empty;
