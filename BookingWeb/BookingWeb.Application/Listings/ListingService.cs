@@ -3,6 +3,7 @@ using BookingWeb.Application.Listings.Requests;
 using BookingWeb.Application.Models;
 using BookingWeb.Application.Results;
 using BookingWeb.Domain.Entities;
+using BookingWeb.Domain.ValueObjects;
 using Mapster;
 
 namespace BookingWeb.Application.Listings;
@@ -12,26 +13,34 @@ public sealed class ListingService : IListingService
     private readonly IListingRepository _listingRepository;
     private readonly IUnitOfWork _unitOfWork;
     private readonly TimeProvider _timeProvider;
+    private readonly ILocationObfuscator _locationObfuscator;
 
     public ListingService(
         IListingRepository listingRepository, 
         IUnitOfWork unitOfWork,
-        TimeProvider timeProvider)
+        TimeProvider timeProvider,
+        ILocationObfuscator locationObfuscator)
     {
         _listingRepository = listingRepository;
         _unitOfWork = unitOfWork;
         _timeProvider = timeProvider;
+        _locationObfuscator = locationObfuscator;
     }
     
-    public async Task<Result<ListingDto>> CreateAsync(
+    public async Task<Result<HostListingDto>> CreateAsync(
         Guid hostId, ListingRequest request, CancellationToken ct = default)
     {
+        var location = ToGeoPoint(request);
+
         var listing = Listing.Create(
             hostId,
             request.Title,
             request.Description,
+            request.Region,
             request.City,
             request.Address,
+            location: location,
+            publicLocation: _locationObfuscator.Obfuscate(location),
             request.PricePerNight,
             request.MaxGuests,
             _timeProvider.GetUtcNow());
@@ -39,41 +48,54 @@ public sealed class ListingService : IListingService
         _listingRepository.Add(listing);
         await _unitOfWork.SaveChangesAsync(ct);
 
-        return listing.Adapt<ListingDto>();
+        return listing.Adapt<HostListingDto>();
     }
 
-    public async Task<Result<ListingDto>> GetByIdAsync(
+    public async Task<Result<PublicListingDto>> GetByIdAsync(
         Guid listingId, CancellationToken ct = default)
     {
-        var listing = await _listingRepository.GetByIdAsync(listingId, ct);
+        var listing = await _listingRepository.GetPublicByIdAsync(listingId, ct);
 
-        if (listing is null || !listing.IsActive)
+        if (listing is null)
         {
             return ListingErrors.NotFound;
         }
 
-        return listing.Adapt<ListingDto>();
+        return listing;
     }
 
-    public async Task<Result<IReadOnlyList<ListingDto>>> GetMineAsync(
+    public async Task<Result<IReadOnlyList<HostListingDto>>> GetMineAsync(
         Guid hostId, CancellationToken ct = default)
     {
-        var listing = await _listingRepository.GetByHostAsync(hostId, ct);
-        IReadOnlyList<ListingDto> items = listing.Adapt<List<ListingDto>>();
+        var listings = await _listingRepository.GetByHostAsync(hostId, ct);
 
-        return Result.Success(items);
+        return Result.Success(listings);
     }
 
-    public async Task<Result<PagedResult<ListingDto>>> SearchAsync(
+    public async Task<Result<PagedResult<PublicListingDto>>> SearchAsync(
         ListingFilterDto filter, CancellationToken ct = default)
     {
-        var page = await _listingRepository.SearchAsync(filter, ct);
-        var items = page.Items.Adapt<List<ListingDto>>();
-        
-        return new PagedResult<ListingDto>(items, page.TotalCount, page.Page, page.PageSize);
+        return await _listingRepository.SearchAsync(
+            ListingSearchCriteria.From(filter), filter.Page, filter.PageSize, ct);
     }
 
-    public async Task<Result<ListingDto>> UpdateAsync(
+    public async Task<Result<MapMarkersDto>> SearchInAreaAsync(
+        MapSearchRequest request, CancellationToken ct = default)
+    {
+        var criteria = ListingSearchCriteria.From(request);
+
+        if (criteria.Area is null)
+        {
+            return ListingErrors.InvalidBoundingBox;
+        }
+
+        var markers = await _listingRepository.GetMarkersAsync(criteria, request.Limit + 1, ct);
+        var isTruncated = markers.Count > request.Limit;
+
+        return new MapMarkersDto(isTruncated ? markers.Take(request.Limit).ToList() : markers, isTruncated);
+    }
+
+    public async Task<Result<HostListingDto>> UpdateAsync(
         Guid hostId, Guid listingId, ListingRequest request, CancellationToken ct = default)
     {
         var listing = await _listingRepository.GetByIdForHostAsync(listingId, hostId, ct);
@@ -85,14 +107,21 @@ public sealed class ListingService : IListingService
         listing.Update(
             request.Title,
             request.Description,
+            request.Region,
             request.City,
             request.Address,
             request.PricePerNight,
             request.MaxGuests);
+
+        var location = ToGeoPoint(request);
+        if (location != listing.Location)
+        {
+            listing.SetLocation(location, _locationObfuscator.Obfuscate(location));
+        }
         
         await _unitOfWork.SaveChangesAsync(ct);
 
-        return listing.Adapt<ListingDto>();
+        return listing.Adapt<HostListingDto>();
     }
 
     public async Task<Result> DeleteAsync(
@@ -109,4 +138,7 @@ public sealed class ListingService : IListingService
         
         return Result.Success();
     }
+
+    private static GeoPoint ToGeoPoint(ListingRequest request) =>
+        new(request.Latitude!.Value, request.Longitude!.Value);
 }

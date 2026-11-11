@@ -19,6 +19,13 @@ public sealed class ListingEndpoints : IEndpointGroup
             return result.Match(Results.Ok);
         });
         
+        group.MapGet("/map", async (
+            [AsParameters] MapSearchRequest request, IListingService service, CancellationToken ct = default) =>
+        {
+            var result = await service.SearchInAreaAsync(request, ct);
+            return result.Match(Results.Ok);
+        });
+
         group.MapGet("/{id:guid}", async (
             Guid id, IListingService service, CancellationToken ct = default) =>
         {
@@ -69,6 +76,5 @@ public sealed class ListingEndpoints : IEndpointGroup
                 return result.Match(Results.NoContent);
             })
             .RequireAuthorization(PolicyNames.HostOnly);
-        
     }
 }

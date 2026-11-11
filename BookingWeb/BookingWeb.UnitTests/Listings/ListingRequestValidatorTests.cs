@@ -1,3 +1,4 @@
+using BookingWeb.Application.Listings;
 using BookingWeb.Application.Listings.Requests;
 using BookingWeb.Application.Listings.Validators;
 using FluentValidation.TestHelper;
@@ -11,7 +12,7 @@ public sealed class ListingRequestValidatorTests
     private static ListingRequest CreateValidRequest()
     {
         return new ListingRequest(
-            "Loft Studio", "Cozy", "Kyiv", "Khreshchatyk 1", 1500.50m, 2);
+            "Loft Studio", "Cozy", "Kyiv", "Kyiv", "Khreshchatyk 1", 50.4501, 30.5234, 1500.50m, 2);
     }
 
     [Fact]
@@ -75,5 +76,85 @@ public sealed class ListingRequestValidatorTests
         _validator.TestValidate(request)
             .ShouldHaveValidationErrorFor(x => x.PricePerNight)
             .WithErrorCode("ScalePrecisionValidator");
+    }
+
+    [Fact]
+    public void Validate_ShouldPass_WhenRegionIsNull()
+    {
+        var request = CreateValidRequest() with { Region = null };
+
+        _validator.TestValidate(request).ShouldNotHaveAnyValidationErrors();
+    }
+
+    [Fact]
+    public void Validate_ShouldFail_WhenRegionIsTooLong()
+    {
+        var request = CreateValidRequest() with { Region = new string('a', 101) };
+
+        _validator.TestValidate(request)
+            .ShouldHaveValidationErrorFor(x => x.Region);
+    }
+
+    [Fact]
+    public void Validate_ShouldFail_WhenLatitudeIsMissing()
+    {
+        var request = CreateValidRequest() with { Latitude = null };
+
+        _validator.TestValidate(request)
+            .ShouldHaveValidationErrorFor(x => x.Latitude)
+            .WithErrorCode(ListingErrors.LocationRequired.Code);
+    }
+
+    [Fact]
+    public void Validate_ShouldFail_WhenLongitudeIsMissing()
+    {
+        var request = CreateValidRequest() with { Longitude = null };
+
+        _validator.TestValidate(request)
+            .ShouldHaveValidationErrorFor(x => x.Longitude)
+            .WithErrorCode(ListingErrors.LocationRequired.Code);
+    }
+
+    [Theory]
+    [InlineData(-90.000001)]
+    [InlineData(90.000001)]
+    public void Validate_ShouldFail_WhenLatitudeIsOutOfRange(double latitude)
+    {
+        var request = CreateValidRequest() with { Latitude = latitude };
+
+        _validator.TestValidate(request)
+            .ShouldHaveValidationErrorFor(x => x.Latitude);
+    }
+
+    [Theory]
+    [InlineData(-180.000001)]
+    [InlineData(180.000001)]
+    public void Validate_ShouldFail_WhenLongitudeIsOutOfRange(double longitude)
+    {
+        var request = CreateValidRequest() with { Longitude = longitude };
+
+        _validator.TestValidate(request)
+            .ShouldHaveValidationErrorFor(x => x.Longitude);
+    }
+
+    [Theory]
+    [InlineData(-90, -180)]
+    [InlineData(90, 180)]
+    public void Validate_ShouldPass_WhenCoordinatesAreOnBoundaries(double latitude, double longitude)
+    {
+        var request = CreateValidRequest() with { Latitude = latitude, Longitude = longitude };
+
+        _validator.TestValidate(request).ShouldNotHaveAnyValidationErrors();
+    }
+
+    [Theory]
+    [InlineData(double.NaN)]
+    [InlineData(double.PositiveInfinity)]
+    public void Validate_ShouldFail_WhenLatitudeIsNotFinite(double latitude)
+    {
+        var request = CreateValidRequest() with { Latitude = latitude };
+
+        _validator.TestValidate(request)
+            .ShouldHaveValidationErrorFor(x => x.Latitude);
     }
 }

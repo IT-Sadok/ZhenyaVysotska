@@ -18,18 +18,19 @@ public sealed class ListingEndpointsTests : ApiTestBase
     
     private static ListingRequest CreateRequest(decimal price = 1000m)
     {
-        return new ListingRequest("Loft", "Cozy loft", "Kyiv", "Khreshchatyk 1", price, 4);
+        return new ListingRequest(
+            "Loft", "Cozy loft", "Kyiv", "Kyiv", "Khreshchatyk 1", KyivLatitude, KyivLongitude, price, 4);
     }
 
-    private async Task<PagedResult<ListingDto>> SearchAsync(string query = "")
+    private async Task<PagedResult<PublicListingDto>> SearchAsync(string query = "")
     {
         var response = await Client.GetAsync($"/api/listings{query}");
         await response.ShouldHaveStatusAsync(HttpStatusCode.OK);
-        return (await response.Content.ReadFromJsonAsync<PagedResult<ListingDto>>())!;
+        return (await response.Content.ReadFromJsonAsync<PagedResult<PublicListingDto>>())!;
     }
 
     [Fact]
-    public async Task CreateListing_ShouldReturnCreatedWithLocation_WhenUserIsHost()
+    public async Task CreateListing_ShouldReturnCreatedActiveListingWithLocationHeader_WhenUserIsHost()
     {
         using var host = await CreateUserClientAsync("host@test.com", Roles.Host);
 
@@ -37,7 +38,7 @@ public sealed class ListingEndpointsTests : ApiTestBase
 
         await response.ShouldHaveStatusAsync(HttpStatusCode.Created);
         
-        var listing = (await response.Content.ReadFromJsonAsync<ListingDto>())!;
+        var listing = (await response.Content.ReadFromJsonAsync<HostListingDto>())!;
         
         response.Headers.Location!.ToString().ShouldBe($"/api/listings/{listing.Id}");
         
@@ -83,7 +84,7 @@ public sealed class ListingEndpointsTests : ApiTestBase
         var response = await Client.GetAsync($"/api/listings/{listing.Id}");
 
         await response.ShouldHaveStatusAsync(HttpStatusCode.OK);
-        (await response.Content.ReadFromJsonAsync<ListingDto>())!.Title.ShouldBe("Loft");
+        (await response.Content.ReadFromJsonAsync<PublicListingDto>())!.Title.ShouldBe("Loft");
     }
 
     [Fact]
@@ -94,7 +95,7 @@ public sealed class ListingEndpointsTests : ApiTestBase
         var own = await CreateListingAsync(host);
         await CreateListingAsync(otherHost);
 
-        var listings = await host.GetFromJsonAsync<List<ListingDto>>("/api/listings/mine");
+        var listings = await host.GetFromJsonAsync<List<HostListingDto>>("/api/listings/mine");
 
         listings!.Select(listing => listing.Id).ShouldBe(new[] { own.Id });
     }
@@ -104,12 +105,13 @@ public sealed class ListingEndpointsTests : ApiTestBase
     {
         using var host = await CreateUserClientAsync("host@test.com", Roles.Host);
         var listing = await CreateListingAsync(host);
-        var update = new ListingRequest("Sea view", null, "Odesa", "Deribasivska 1", 2500m, 6);
+        var update = new ListingRequest(
+            "Sea view", null, "Odesa Oblast", "Odesa", "Deribasivska 1", 46.4825, 30.7233, 2500m, 6);
 
         var response = await host.PutAsJsonAsync($"/api/listings/{listing.Id}", update);
 
         await response.ShouldHaveStatusAsync(HttpStatusCode.OK);
-        var stored = await Client.GetFromJsonAsync<ListingDto>($"/api/listings/{listing.Id}");
+        var stored = await Client.GetFromJsonAsync<PublicListingDto>($"/api/listings/{listing.Id}");
         stored!.City.ShouldBe("Odesa");
         stored.PricePerNight.ShouldBe(2500m);
     }
@@ -124,12 +126,12 @@ public sealed class ListingEndpointsTests : ApiTestBase
         var response = await intruder.PutAsJsonAsync($"/api/listings/{listing.Id}", CreateRequest(price: 1m));
 
         await response.ShouldHaveStatusAsync(HttpStatusCode.NotFound);
-        var stored = await Client.GetFromJsonAsync<ListingDto>($"/api/listings/{listing.Id}");
+        var stored = await Client.GetFromJsonAsync<PublicListingDto>($"/api/listings/{listing.Id}");
         stored!.PricePerNight.ShouldBe(1000m);
     }
 
     [Fact]
-    public async Task DeleteListing_ShouldHideListingFromPublic_WhenThereAreNoUpcomingBookings()
+    public async Task DeleteListing_ShouldHideListingFromPublic_WhenHostOwnsListing()
     {
         using var host = await CreateUserClientAsync("host@test.com", Roles.Host);
         var listing = await CreateListingAsync(host);
@@ -141,27 +143,65 @@ public sealed class ListingEndpointsTests : ApiTestBase
         (await SearchAsync()).TotalCount.ShouldBe(0);
     }
 
-    [Fact]
-    public async Task SearchListings_ShouldFilterByCityIgnoringCase_WhenCityIsGiven()
+    private static Dictionary<string, object?> RawRequest(params string[] omit)
     {
-        using var host = await CreateUserClientAsync("host@test.com", Roles.Host);
-        var kyiv = await CreateListingAsync(host, city: "Kyiv");
-        await CreateListingAsync(host, city: "Lviv");
+        var body = new Dictionary<string, object?>
+        {
+            ["title"] = "Loft",
+            ["description"] = "Cozy loft",
+            ["region"] = "Kyiv",
+            ["city"] = "Kyiv",
+            ["address"] = "Khreshchatyk 1",
+            ["latitude"] = KyivLatitude,
+            ["longitude"] = KyivLongitude,
+            ["pricePerNight"] = 1000m,
+            ["maxGuests"] = 4,
+        };
+        foreach (var key in omit)
+        {
+            body.Remove(key);
+        }
 
-        var page = await SearchAsync("?city=kyiv");
-
-        page.Items.Select(listing => listing.Id).ShouldBe(new[] { kyiv.Id });
+        return body;
     }
-    
-    [Fact]
-    public async Task SearchListings_ShouldFilterByCityIgnoringCaseInCyrillic_WhenCityIsGiven()
+
+    [Theory]
+    [InlineData("latitude")]
+    [InlineData("longitude")]
+    public async Task CreateListing_ShouldReturnLocationRequiredAndNotCreateListing_WhenCoordinateIsMissing(string missing)
     {
         using var host = await CreateUserClientAsync("host@test.com", Roles.Host);
-        var kyiv = await CreateListingAsync(host, city: "Київ");
-        await CreateListingAsync(host, city: "Львів");
 
-        var page = await SearchAsync("?city=київ");
+        var response = await host.PostAsJsonAsync("/api/listings", RawRequest(omit: missing));
 
-        page.Items.Select(listing => listing.Id).ShouldBe(new[] { kyiv.Id });
+        await response.ShouldHaveStatusAsync(HttpStatusCode.BadRequest);
+        (await response.ReadErrorCodesAsync()).ShouldContain(ListingErrors.LocationRequired.Code);
+        (await SearchAsync()).TotalCount.ShouldBe(0);
+    }
+
+    [Fact]
+    public async Task CreateListing_ShouldSucceedWithNullRegion_WhenRegionIsMissing()
+    {
+        using var host = await CreateUserClientAsync("host@test.com", Roles.Host);
+
+        var response = await host.PostAsJsonAsync("/api/listings", RawRequest(omit: "region"));
+
+        await response.ShouldHaveStatusAsync(HttpStatusCode.Created);
+        var listing = (await response.Content.ReadFromJsonAsync<HostListingDto>())!;
+        listing.Region.ShouldBeNull();
+    }
+
+    [Fact]
+    public async Task UpdateListing_ShouldReturnLocationRequiredAndKeepListing_WhenLatitudeIsMissing()
+    {
+        using var host = await CreateUserClientAsync("host@test.com", Roles.Host);
+        var listing = await CreateListingAsync(host);
+
+        var response = await host.PutAsJsonAsync($"/api/listings/{listing.Id}", RawRequest(omit: "latitude"));
+
+        await response.ShouldHaveStatusAsync(HttpStatusCode.BadRequest);
+        (await response.ReadErrorCodesAsync()).ShouldContain(ListingErrors.LocationRequired.Code);
+        var stored = await Client.GetFromJsonAsync<PublicListingDto>($"/api/listings/{listing.Id}");
+        (stored!.Latitude, stored.Longitude).ShouldBe((listing.PublicLatitude, listing.PublicLongitude));
     }
 }

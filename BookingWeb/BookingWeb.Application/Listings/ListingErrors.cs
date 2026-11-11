@@ -9,4 +9,10 @@ public static class ListingErrors
 
     public static readonly Error HasUpcomingBookings =
         new("Listing.HasUpcomingBookings", "Listing has upcoming bookings and can't be deleted.", ErrorType.Conflict);
+    
+    public static readonly Error InvalidBoundingBox =
+        new("Listing.InvalidBoundingBox", "Bounding box is invalid.");
+
+    public static readonly Error LocationRequired =
+        new("Listing.LocationRequired", "Latitude and longitude are required.");
 }

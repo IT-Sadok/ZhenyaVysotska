@@ -20,6 +20,8 @@ public static class ApplicationServiceCollectionExtensions
             .WithScopedLifetime());
 
         services.TryAddSingleton(TimeProvider.System);
+        
+        services.AddSingleton<ILocationObfuscator, LocationObfuscator>();
 
         MappingConfig.RegisterMappings();
         return services;
