@@ -1,5 +1,7 @@
 using System.Net;
+using System.Net.Http.Headers;
 using System.Net.Http.Json;
+using BookingWeb.Api.RateLimiting;
 using BookingWeb.Application.Geocoding;
 using BookingWeb.Domain;
 using BookingWeb.IntegrationTests.Infrastructure;
@@ -21,6 +23,23 @@ public sealed class GeocodingEndpointsTests : ApiTestBase
     private Task<HttpClient> CreateHostAsync() => CreateUserClientAsync("host@test.com", Roles.Host);
 
     private static string Search(string query) => $"{SearchUrl}?q={Uri.EscapeDataString(query)}";
+
+    private static IPAddress NewIp() => new(Guid.NewGuid().ToByteArray());
+
+    private HttpClient AuthorizedClientFrom(string accessToken, IPAddress ip)
+    {
+        var client = CreateClient(ip);
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
+        return client;
+    }
+    
+    private static async Task ExhaustSearchLimitAsync(HttpClient client)
+    {
+        for (var i = 0; i < 11; i++)
+        {
+            await client.GetAsync(Search("Хрещатик, Київ"));
+        }
+    }
 
     [Fact]
     public async Task Search_ShouldReturnCandidatesWithBoundingBoxInMinMaxOrder_WhenNominatimFindsPlaces()
@@ -70,9 +89,7 @@ public sealed class GeocodingEndpointsTests : ApiTestBase
     {
         using var host = await CreateHostAsync();
         var first = await host.GetAsync(Search("Хрещатик, Київ"));
-
-        // The test limiter has a single token and is not refilled here: had this call reached
-        // the HTTP pipeline, it would have failed with Geocoding.Busy.
+        
         var second = await host.GetAsync(Search("  хрещатик,  КИЇВ  "));
 
         await second.ShouldHaveStatusAsync(HttpStatusCode.OK);
@@ -258,24 +275,102 @@ public sealed class GeocodingEndpointsTests : ApiTestBase
         Nominatim.Requests.ShouldBeEmpty();
     }
 
-    [Theory]
-    [InlineData(SearchUrl + "?q=Kyiv")]
-    [InlineData(ReverseUrl + "?lat=50&lng=30")]
-    public async Task Geocoding_ShouldReturn401_WhenUserIsAnonymous(string url)
+    [Fact]
+    public async Task Search_ShouldReturnCandidates_WhenUserIsAnonymous()
     {
-        var response = await Client.GetAsync(url);
+        var response = await Client.GetAsync(Search("Хрещатик, Київ"));
+
+        await response.ShouldHaveStatusAsync(HttpStatusCode.OK);
+        (await response.Content.ReadFromJsonAsync<List<GeocodingCandidateDto>>())!.ShouldHaveSingleItem();
+    }
+
+    [Fact]
+    public async Task Search_ShouldReturnCandidates_WhenUserIsClient()
+    {
+        using var client = await CreateUserClientAsync("client@test.com", Roles.Client);
+
+        var response = await client.GetAsync(Search("Хрещатик, Київ"));
+
+        await response.ShouldHaveStatusAsync(HttpStatusCode.OK);
+    }
+
+    [Fact]
+    public async Task Search_ShouldReturn429WithRetryAfter_WhenClientIpExceedsPerIpLimit()
+    {
+     
+        for (var i = 0; i < 10; i++)
+        {
+            var allowed = await Client.GetAsync(Search("Хрещатик, Київ"));
+            await allowed.ShouldHaveStatusAsync(HttpStatusCode.OK);
+        }
+
+        var rejected = await Client.GetAsync(Search("Хрещатик, Київ"));
+
+        await rejected.ShouldHaveStatusAsync(HttpStatusCode.TooManyRequests);
+        (await rejected.ReadProblemTitleAsync()).ShouldBe(RateLimitingExtensions.RejectedErrorCode);
+        rejected.Headers.RetryAfter.ShouldNotBeNull();
+        Nominatim.Requests.Count.ShouldBe(1);
+    }
+
+    [Fact]
+    public async Task Search_ShouldStillServeOtherIps_WhenOneClientIpIsRateLimited()
+    {
+        await ExhaustSearchLimitAsync(Client);
+
+        using var otherClient = CreateClient(NewIp());
+        var response = await otherClient.GetAsync(Search("Хрещатик, Київ"));
+
+        await response.ShouldHaveStatusAsync(HttpStatusCode.OK);
+    }
+
+    [Fact]
+    public async Task Search_ShouldLimitSignedInUserPerAccount_WhenRequestsComeFromDifferentIps()
+    {
+        var auth = await RegisterAsync("client@test.com");
+        await ExhaustSearchLimitAsync(AuthorizedClientFrom(auth.AccessToken, NewIp()));
+
+        using var sameUserOtherIp = AuthorizedClientFrom(auth.AccessToken, NewIp());
+        var response = await sameUserOtherIp.GetAsync(Search("Хрещатик, Київ"));
+
+        await response.ShouldHaveStatusAsync(HttpStatusCode.TooManyRequests);
+    }
+
+    [Fact]
+    public async Task Search_ShouldNotLimitSignedInUser_WhenAnonymousTrafficFromSameIpIsLimited()
+    {
+        await ExhaustSearchLimitAsync(Client);
+
+        using var user = await CreateUserClientAsync("client@test.com", Roles.Client);
+        var response = await user.GetAsync(Search("Хрещатик, Київ"));
+
+        await response.ShouldHaveStatusAsync(HttpStatusCode.OK);
+    }
+
+    [Fact]
+    public async Task Search_ShouldFallBackToIpLimit_WhenAccessTokenIsInvalid()
+    {
+        await ExhaustSearchLimitAsync(Client);
+
+        using var invalidToken = CreateAuthorizedClient("not-a-jwt");
+        var response = await invalidToken.GetAsync(Search("Хрещатик, Київ"));
+
+        await response.ShouldHaveStatusAsync(HttpStatusCode.TooManyRequests);
+    }
+
+    [Fact]
+    public async Task Reverse_ShouldReturn401_WhenUserIsAnonymous()
+    {
+        var response = await Client.GetAsync($"{ReverseUrl}?lat=50&lng=30");
 
         await response.ShouldHaveStatusAsync(HttpStatusCode.Unauthorized);
     }
 
-    [Theory]
-    [InlineData(SearchUrl + "?q=Kyiv")]
-    [InlineData(ReverseUrl + "?lat=50&lng=30")]
-    public async Task Geocoding_ShouldReturn403AndNotCallNominatim_WhenUserIsNotHost(string url)
+    [Fact]
+    public async Task Reverse_ShouldReturn403AndNotCallNominatim_WhenUserIsNotHost()
     {
         using var client = await CreateUserClientAsync("client@test.com", Roles.Client);
 
-        var response = await client.GetAsync(url);
+        var response = await client.GetAsync($"{ReverseUrl}?lat=50&lng=30");
 
         await response.ShouldHaveStatusAsync(HttpStatusCode.Forbidden);
         Nominatim.Requests.ShouldBeEmpty();

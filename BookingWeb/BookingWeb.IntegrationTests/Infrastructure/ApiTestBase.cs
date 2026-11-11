@@ -19,8 +19,10 @@ public abstract class ApiTestBase : IAsyncLifetime
     protected ApiTestBase(ApiFactory factory)
     {
         Factory = factory;
-        Client = factory.CreateClient();
+        Client = CreateClient();
     }
+    
+    protected IPAddress ClientIp { get; } = new(Guid.NewGuid().ToByteArray());
 
     protected ApiFactory Factory { get; }
     
@@ -92,8 +94,15 @@ public abstract class ApiTestBase : IAsyncLifetime
     
     protected HttpClient CreateAuthorizedClient(string accessToken)
     {
-        var client = Factory.CreateClient();
+        var client = CreateClient();
         client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
+        return client;
+    }
+
+    protected HttpClient CreateClient(IPAddress? ip = null)
+    {
+        var client = Factory.CreateClient();
+        client.DefaultRequestHeaders.Add(TestClientIpStartupFilter.HeaderName, (ip ?? ClientIp).ToString());
         return client;
     }
 }

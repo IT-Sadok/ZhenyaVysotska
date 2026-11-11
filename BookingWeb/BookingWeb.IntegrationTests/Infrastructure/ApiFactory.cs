@@ -27,17 +27,11 @@ public sealed class ApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
         "Seed__AdminEmail",
         "Seed__AdminPassword"
     ];
-
-    /// <summary>
-    /// Same shape as production (1 token), but refilled only by <see cref="ReplenishNominatimLimit"/>,
-    /// so rate-limit tests are deterministic. QueueLimit 0: without auto-refill a queued request would wait forever.
-    /// </summary>
+    
     private readonly TokenBucketRateLimiter _nominatimLimiter = new(new TokenBucketRateLimiterOptions
     {
         TokenLimit = 1,
         TokensPerPeriod = 1,
-        // TryReplenish() still refuses to add a token until ReplenishmentPeriod has passed since the
-        // previous refill, so the period is 1 tick: a manual refill then always works.
         ReplenishmentPeriod = TimeSpan.FromTicks(1),
         QueueLimit = 0,
         AutoReplenishment = false
@@ -73,19 +67,17 @@ public sealed class ApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
 
         builder.ConfigureTestServices(services =>
         {
-            // Typed clients are named after the client type: "IGeocodingService".
             services.AddHttpClient(nameof(IGeocodingService))
                 .ConfigurePrimaryHttpMessageHandler(() => Nominatim);
 
-            // The last registration wins, so this replaces the production limiter.
             services.AddKeyedSingleton<RateLimiter>(NominatimRateLimitHandler.LimiterKey, _nominatimLimiter);
+
+            services.AddTransient<IStartupFilter, TestClientIpStartupFilter>();
         });
     }
-
-    /// <summary>Gives the Nominatim limiter its single token back (like one second passing).</summary>
+    
     public void ReplenishNominatimLimit() => _nominatimLimiter.TryReplenish();
 
-    /// <summary>Called before every test: geocoding state is singleton and would leak between tests.</summary>
     public void ResetGeocoding()
     {
         Nominatim.Reset();
