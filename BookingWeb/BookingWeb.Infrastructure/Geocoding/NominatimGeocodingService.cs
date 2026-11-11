@@ -60,7 +60,7 @@ public sealed class NominatimGeocodingService : IGeocodingService
             url += $"&countrycodes={Uri.EscapeDataString(settings.CountryCodes)}";
         }
 
-        var response = await GetAsync<NominatimPlace[]>(url, ct);
+        var response = await GetAsync<NominatimPlace[]>("search", url, ct);
         if (response.IsFailure)
         {
             return response.Error;
@@ -96,7 +96,7 @@ public sealed class NominatimGeocodingService : IGeocodingService
                   $"&accept-language={Uri.EscapeDataString(settings.AcceptLanguage)}" +
                   $"&lat={lat}&lon={lng}";
 
-        var response = await GetAsync<NominatimReverseResponse>(url, ct);
+        var response = await GetAsync<NominatimReverseResponse>("reverse", url, ct);
         if (response.IsFailure)
         {
             return response.Error;
@@ -112,7 +112,8 @@ public sealed class NominatimGeocodingService : IGeocodingService
         return address;
     }
 
-    private async Task<Result<T>> GetAsync<T>(string url, CancellationToken ct)
+    // url contains the user's search query / coordinates (PII) - never log it, log only operation.
+    private async Task<Result<T>> GetAsync<T>(string operation, string url, CancellationToken ct)
     {
         try
         {
@@ -120,7 +121,7 @@ public sealed class NominatimGeocodingService : IGeocodingService
 
             if (!response.IsSuccessStatusCode)
             {
-                _logger.LogError("Nominatim returned {StatusCode} for {Url}", (int)response.StatusCode, url);
+                _logger.LogError("Nominatim {Operation} returned {StatusCode}", operation, (int)response.StatusCode);
                 return GeocodingErrors.Unavailable;
             }
 
@@ -134,17 +135,17 @@ public sealed class NominatimGeocodingService : IGeocodingService
         }
         catch (NominatimRateLimitExceededException)
         {
-            _logger.LogWarning("Nominatim request rejected: rate limit queue is full");
+            _logger.LogWarning("Nominatim {Operation} request rejected: rate limit queue is full", operation);
             return GeocodingErrors.Busy;
         }
         catch (TaskCanceledException) when (!ct.IsCancellationRequested)
         {
-            _logger.LogWarning("Nominatim request timed out for {Url}", url);
+            _logger.LogWarning("Nominatim {Operation} request timed out", operation);
             return GeocodingErrors.Unavailable;
         }
         catch (Exception exception) when (exception is HttpRequestException or JsonException)
         {
-            _logger.LogWarning(exception, "Nominatim request failed for {Url}", url);
+            _logger.LogWarning(exception, "Nominatim {Operation} request failed", operation);
             return GeocodingErrors.Unavailable;
         }
     }
