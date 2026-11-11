@@ -1,6 +1,6 @@
 using BookingWeb.Api.Extensions;
 using BookingWeb.Application.Admin;
-using BookingWeb.Application.Common.Constants;
+using BookingWeb.Application.Constants;
 using BookingWeb.Application.Models;
 using BookingWeb.Application.Results;
 

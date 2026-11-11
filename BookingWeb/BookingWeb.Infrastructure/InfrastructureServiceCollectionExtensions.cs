@@ -2,7 +2,7 @@ using System.Security.Claims;
 using System.Text;
 using System.Threading.RateLimiting;
 using BookingWeb.Application.Common.Settings;
-using BookingWeb.Application.Common.Constants;
+using BookingWeb.Application.Constants;
 using BookingWeb.Application.Interfaces;
 using BookingWeb.Domain;
 using BookingWeb.Infrastructure.Authentication;

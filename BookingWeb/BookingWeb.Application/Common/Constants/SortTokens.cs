@@ -1,4 +1,4 @@
-namespace BookingWeb.Application.Common.Constants;
+namespace BookingWeb.Application.Constants;
 
 public static class SortTokens
 {

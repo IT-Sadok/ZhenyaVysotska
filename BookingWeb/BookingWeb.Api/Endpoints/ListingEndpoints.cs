@@ -1,5 +1,5 @@
 using BookingWeb.Api.Extensions;
-using BookingWeb.Application.Common.Constants;
+using BookingWeb.Application.Constants;
 using BookingWeb.Application.Listings;
 using BookingWeb.Application.Listings.Requests;
 

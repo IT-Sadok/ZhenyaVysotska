@@ -1,4 +1,4 @@
-using BookingWeb.Application.Common.Constants;
+using BookingWeb.Application.Constants;
 using BookingWeb.Domain;
 using FluentValidation;
 

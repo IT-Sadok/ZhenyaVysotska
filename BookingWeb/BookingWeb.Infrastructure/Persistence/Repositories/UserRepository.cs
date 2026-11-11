@@ -1,6 +1,6 @@
 using BookingWeb.Application.Admin;
 using BookingWeb.Application.Auth;
-using BookingWeb.Application.Common.Constants;
+using BookingWeb.Application.Constants;
 using BookingWeb.Application.Interfaces;
 using BookingWeb.Application.Models;
 using Microsoft.EntityFrameworkCore;
