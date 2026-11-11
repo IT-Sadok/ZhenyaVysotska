@@ -8,6 +8,7 @@ using BookingWeb.Application.Geocoding;
 using BookingWeb.Application.Interfaces;
 using BookingWeb.Application.Results;
 using Microsoft.Extensions.Caching.Memory;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
@@ -15,6 +16,8 @@ namespace BookingWeb.Infrastructure.Geocoding;
 
 public sealed class NominatimGeocodingService : IGeocodingService
 {
+    public const string CacheKey = "geocoding";
+
     private static readonly string[] CityKeys = ["city", "town", "village", "municipality"];
 
     private const int ReverseCoordinateDecimals = 5;
@@ -26,7 +29,7 @@ public sealed class NominatimGeocodingService : IGeocodingService
 
     public NominatimGeocodingService(
         HttpClient http,
-        IMemoryCache cache,
+        [FromKeyedServices(CacheKey)] IMemoryCache cache,
         IOptionsMonitor<NominatimSettings> settings,
         ILogger<NominatimGeocodingService> logger)
     {

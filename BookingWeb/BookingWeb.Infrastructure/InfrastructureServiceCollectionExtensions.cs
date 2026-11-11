@@ -13,6 +13,7 @@ using BookingWeb.Infrastructure.Persistence.Repositories;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
@@ -118,7 +119,8 @@ public static class InfrastructureServiceCollectionExtensions
                 "'Nominatim' timeout, queue limit and max results must be positive.")
             .ValidateOnStart();
         
-        services.AddMemoryCache(options => options.SizeLimit = 10_000);
+        services.AddKeyedSingleton<IMemoryCache>(NominatimGeocodingService.CacheKey,
+            (_, _) => new MemoryCache(new MemoryCacheOptions { SizeLimit = 10_000 }));
 
         services.AddKeyedSingleton<RateLimiter>(NominatimRateLimitHandler.LimiterKey, (provider, _) =>
         {

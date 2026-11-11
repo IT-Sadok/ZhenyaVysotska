@@ -82,7 +82,7 @@ public sealed class ApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
     {
         Nominatim.Reset();
         ReplenishNominatimLimit();
-        ((MemoryCache)Services.GetRequiredService<IMemoryCache>()).Clear();
+        ((MemoryCache)Services.GetRequiredKeyedService<IMemoryCache>(NominatimGeocodingService.CacheKey)).Clear();
     }
 
     public async Task ResetDatabaseAsync()
