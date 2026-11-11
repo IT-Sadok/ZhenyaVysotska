@@ -96,6 +96,22 @@ public sealed class ListingSearchEndpointsTests : ApiTestBase
     }
 
     [Fact]
+    public async Task Map_ShouldFindListingInNewArea_WhenHostMovesIt()
+    {
+        const string lvivBox = "minLat=49.7&minLng=23.9&maxLat=50.0&maxLng=24.2";
+        using var host = await CreateUserClientAsync("host@test.com", Roles.Host);
+        var listing = await CreateListingAsync(host);
+        var moved = new ListingRequest(
+            "Loft", "Cozy loft", "Lviv Oblast", "Lviv", "Rynok Square 1", LvivLatitude, LvivLongitude, 1000m, 4);
+
+        var response = await host.PutAsJsonAsync($"/api/listings/{listing.Id}", moved);
+
+        await response.ShouldHaveStatusAsync(HttpStatusCode.OK);
+        (await GetMapAsync(lvivBox)).Markers.Select(marker => marker.Id).ShouldBe([listing.Id]);
+        (await GetMapAsync(KyivBox)).Markers.ShouldBeEmpty();
+    }
+
+    [Fact]
     public async Task Map_ShouldFindListingByPublicPoint_WhenPointLiesExactlyOnBoxEdge()
     {
         using var host = await CreateUserClientAsync("host@test.com", Roles.Host);

@@ -12,7 +12,7 @@ public sealed class ListingConfiguration : IEntityTypeConfiguration<Listing>
     
     public const int Wgs84Srid = 4326;
 
-    public const string CreatedAtActiveIndex = "IX_Listings_CreatedAtUtc_Active";
+    private const string CreatedAtActiveIndex = "IX_Listings_CreatedAtUtc_Active";
 
     public void Configure(EntityTypeBuilder<Listing> builder)
     {
