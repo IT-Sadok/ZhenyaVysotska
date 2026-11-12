@@ -1,9 +1,11 @@
 using BookingWeb.Api;
+using BookingWeb.Api.Authentication;
 using BookingWeb.Api.Extensions;
 using BookingWeb.Api.OpenApi;
 using BookingWeb.Api.RateLimiting;
 using BookingWeb.Api.Validation;
 using BookingWeb.Application;
+using BookingWeb.Application.Common.Interfaces;
 using BookingWeb.Infrastructure;
 using BookingWeb.Infrastructure.Persistence;
 using Scalar.AspNetCore;
@@ -12,6 +14,9 @@ var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddApplication();
 builder.Services.AddInfrastructure(builder.Configuration);
+
+builder.Services.AddHttpContextAccessor();
+builder.Services.AddScoped<IUserContext, HttpUserContext>();
 
 builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
 builder.Services.AddProblemDetails();

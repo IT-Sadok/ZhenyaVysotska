@@ -1,4 +1,5 @@
 using BookingWeb.Api.Extensions;
+using BookingWeb.Application.Common.Interfaces;
 using BookingWeb.Application.Bookings;
 using BookingWeb.Application.Common.Constants;
 using BookingWeb.Application.Listings;
@@ -37,72 +38,54 @@ public sealed class ListingEndpoints : IEndpointGroup
         });
 
         group.MapGet("/mine", async (
-                [AsParameters] PageRequest request, HttpContext http, 
+                [AsParameters] PageRequest request, IUserContext user, 
                 IListingService listings, CancellationToken ct) =>
             {
-                var hostId = http.User.GetUserId();
-                if (hostId is null) return Results.Unauthorized();
-
-                var result = await listings.GetMineAsync(hostId.Value, request, ct);
+                var result = await listings.GetMineAsync(user.UserId, request, ct);
                 return result.Match(Results.Ok);
             })
             .RequireAuthorization(PolicyNames.HostOnly);
 
         group.MapPost("/", async (
-                ListingRequest request, HttpContext http, 
+                ListingRequest request, IUserContext user, 
                 IListingService listings, CancellationToken ct) =>
             {
-                var hostId = http.User.GetUserId();
-                if (hostId is null) return Results.Unauthorized();
-
-                var result = await listings.CreateAsync(hostId.Value, request, ct);
+                var result = await listings.CreateAsync(user.UserId, request, ct);
                 return result.Match(listing => Results.Created($"/api/listings/{listing.Id}", listing));
             })
             .RequireAuthorization(PolicyNames.HostOnly);
 
         group.MapPut("/{id:guid}", async (
-                Guid id, ListingRequest request, HttpContext http, 
+                Guid id, ListingRequest request, IUserContext user, 
                 IListingService listings, CancellationToken ct) =>
             {
-                var hostId = http.User.GetUserId();
-                if (hostId is null) return Results.Unauthorized();
-
-                var result = await listings.UpdateAsync(hostId.Value, id, request, ct);
+                var result = await listings.UpdateAsync(user.UserId, id, request, ct);
                 return result.Match(Results.Ok);
             })
             .RequireAuthorization(PolicyNames.HostOnly);
         
         group.MapGet("/{id:guid}/bookings", async (
-                Guid id, [AsParameters] PageRequest request, HttpContext http, 
+                Guid id, [AsParameters] PageRequest request, IUserContext user, 
                 IBookingService bookings, CancellationToken ct) =>
             {
-                var hostId = http.User.GetUserId();
-                if (hostId is null) return Results.Unauthorized();
-
-                var result = await bookings.GetForHostListingAsync(hostId.Value, id, request, ct);
+                var result = await bookings.GetForHostListingAsync(user.UserId, id, request, ct);
                 return result.Match(Results.Ok);
             })
             .RequireAuthorization(PolicyNames.HostOnly);
 
         group.MapPost("/{listingId:guid}/bookings/{bookingId:guid}/cancel", async (
-                Guid listingId, Guid bookingId, HttpContext http, 
+                Guid listingId, Guid bookingId, IUserContext user, 
                 IBookingService bookings, CancellationToken ct) =>
             {
-                var hostId = http.User.GetUserId();
-                if (hostId is null) return Results.Unauthorized();
-
-                var result = await bookings.CancelByHostAsync(hostId.Value, listingId, bookingId, ct);
+                var result = await bookings.CancelByHostAsync(user.UserId, listingId, bookingId, ct);
                 return result.Match(Results.Ok);
             })
             .RequireAuthorization(PolicyNames.HostOnly);
         
         group.MapDelete("/{id:guid}", async (
-                Guid id, HttpContext http, IListingService listings, CancellationToken ct) =>
+                Guid id, IUserContext user, IListingService listings, CancellationToken ct) =>
             {
-                var hostId = http.User.GetUserId();
-                if (hostId is null) return Results.Unauthorized();
-
-                var result = await listings.DeleteAsync(hostId.Value, id, ct);
+                var result = await listings.DeleteAsync(user.UserId, id, ct);
                 return result.Match(Results.NoContent);
             })
             .RequireAuthorization(PolicyNames.HostOnly);

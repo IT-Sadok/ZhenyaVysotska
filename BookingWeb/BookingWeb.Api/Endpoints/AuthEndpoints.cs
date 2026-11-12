@@ -43,24 +43,18 @@ public sealed class AuthEndpoints : IEndpointGroup
             .RequireAuthorization();
 
         group.MapPut("/me/roles/{role}", async (
-                [AsParameters] AddRoleRequest request, HttpContext context, 
+                [AsParameters] AddRoleRequest request, IUserContext user, 
                 IAuthService auth, CancellationToken ct) =>
         {
-            var userId = context.User.GetUserId();
-            if (userId is null) return Results.Unauthorized();
-            
-            var result = await auth.AddRoleAsync(userId.Value, request, ct);
+            var result = await auth.AddRoleAsync(user.UserId, request, ct);
             return result.Match(Results.Ok);
         })
             .RequireAuthorization();
 
         group.MapGet("/me", async (
-            HttpContext context, IIdentityService identity, CancellationToken ct) =>
+            IUserContext user, IIdentityService identity, CancellationToken ct) =>
         {
-            var userId = context.User.GetUserId();
-            if (userId is null) return Results.Unauthorized();
-
-            var result = await identity.GetUserByIdAsync(userId.Value, ct);
+            var result = await identity.GetUserByIdAsync(user.UserId, ct);
             return result.Match(Results.Ok);
         })
             .RequireAuthorization();
