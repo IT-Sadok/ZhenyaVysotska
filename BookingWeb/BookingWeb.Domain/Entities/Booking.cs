@@ -3,18 +3,6 @@ using Ardalis.GuardClauses;
 
 namespace BookingWeb.Domain.Entities;
 
-public enum BookingStatus
-{
-    Confirmed,
-    Cancelled
-}
-
-public enum BookingCanceller
-{
-    Guest,
-    Host
-}
-
 public sealed class Booking
 {
     public Guid Id { get; private set; }
@@ -55,7 +43,7 @@ public sealed class Booking
 
         return new Booking
         {
-            Id = Guid.NewGuid(),
+            Id = Guid.CreateVersion7(createdAtUtc),
             ListingId = listingId,
             GuestId = guestId,
             CheckIn = checkIn,
@@ -76,14 +64,14 @@ public sealed class Booking
         booking => booking.Status == BookingStatus.Confirmed
                    && booking.CheckOut > today;
     
-    public bool CanBeCancelledOn(DateOnly listingToday)
+    public bool CanBeCancelledOn(DateOnly today)
     {
-        return Status == BookingStatus.Confirmed && listingToday < CheckIn;
+        return Status == BookingStatus.Confirmed && today < CheckIn;
     }
 
-    public void Cancel(DateTimeOffset nowUtc, DateOnly listingToday, BookingCanceller canceller)
+    public void Cancel(DateTimeOffset nowUtc, DateOnly today, BookingCanceller canceller)
     {
-        if (!CanBeCancelledOn(listingToday))
+        if (!CanBeCancelledOn(today))
         {
             throw new InvalidOperationException(
                 "Only a confirmed booking can be cancelled, and only before the check-in day.");

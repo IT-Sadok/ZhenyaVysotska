@@ -40,8 +40,7 @@ public sealed class BookingService : IBookingService
         {
             return BookingErrors.OwnListing;
         }
-
-        // Also checked by the validator; repeated here so the rule holds for any caller of the service.
+        
         if (request.CheckIn < _timeProvider.GetPlatformToday())
         {
             return BookingErrors.CheckInInPast;
@@ -140,7 +139,6 @@ public sealed class BookingService : IBookingService
     private async Task<Result<BookingDto>> CancelAsync(
         Booking booking, BookingCanceller canceller, CancellationToken ct)
     {
-        // "Before the check-in day" is measured in the listing's time zone, so we need the listing.
         var listing = await _listings.GetByIdAsync(booking.ListingId, ct);
         if (listing is null)
         {

@@ -13,6 +13,7 @@ namespace BookingWeb.UnitTests.Bookings;
 public sealed class BookingServiceTests
 {
     private static readonly DateTimeOffset Now = new(2026, 3, 1, 9, 0, 0, TimeSpan.Zero);
+    private static readonly DateOnly KyivToday = new(2026, 3, 1); // 09:00 UTC = 11:00 in Kyiv (UTC+2 in March)
     private static readonly DateOnly CheckIn = new(2026, 3, 10);
     private static readonly DateOnly CheckOut = new(2026, 3, 13);
 
@@ -161,11 +162,9 @@ public sealed class BookingServiceTests
 
         result.Error.ShouldBe(BookingErrors.NotFound);
     }
-
-    // Kyiv is UTC+2 in March (before DST): 22:30 UTC on Mar 9 is already 00:30 on Mar 10 in Kyiv.
+    
     private static readonly DateTimeOffset KyivJustAfterMidnightOnCheckInDay = new(2026, 3, 9, 22, 30, 0, TimeSpan.Zero);
 
-    // 21:30 UTC on Mar 9 is 23:30 on Mar 9 in Kyiv: the check-in day has not started yet.
     private static readonly DateTimeOffset KyivEveningBeforeCheckInDay = new(2026, 3, 9, 21, 30, 0, TimeSpan.Zero);
 
     [Fact]
@@ -174,7 +173,7 @@ public sealed class BookingServiceTests
         var listing = CreateListing();
         SetupListing(listing);
         var sut = CreateSut(KyivJustAfterMidnightOnCheckInDay);
-        var yesterdayInKyiv = CheckIn.AddDays(-1); // still "today" in UTC
+        var yesterdayInKyiv = CheckIn.AddDays(-1); 
 
         var result = await sut.CreateAsync(
             _guestId, new CreateBookingRequest(listing.Id, yesterdayInKyiv, CheckOut, 2));
@@ -238,7 +237,7 @@ public sealed class BookingServiceTests
     public async Task Cancel_ShouldReturnCannotBeCancelled_WhenBookingIsAlreadyCancelled()
     {
         var booking = SetupBookingOfGuest(CreateListing());
-        booking.Cancel(Now, DateOnly.FromDateTime(Now.UtcDateTime), BookingCanceller.Guest);
+        booking.Cancel(Now, KyivToday, BookingCanceller.Guest);
 
         var result = await _sut.CancelAsync(_guestId, booking.Id);
 

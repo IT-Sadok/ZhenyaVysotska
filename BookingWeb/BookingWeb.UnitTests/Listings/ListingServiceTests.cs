@@ -13,6 +13,7 @@ namespace BookingWeb.UnitTests.Listings;
 public sealed class ListingServiceTests
 {
     private static readonly DateTimeOffset Now = new (2026, 3, 1, 9, 0, 0, TimeSpan.Zero);
+    private static readonly DateOnly KyivToday = new(2026, 3, 1); 
     private static readonly GeoPoint KyivExact = new(50.4501, 30.5234);
     private static readonly GeoPoint KyivPublic = new(50.4530, 30.5260);
     private static readonly GeoPoint OdesaExact = new(46.4825, 30.7233);
@@ -158,11 +159,11 @@ public sealed class ListingServiceTests
     }
 
     [Fact]
-public async Task Delete_ShouldReturnConflictAndKeepActive_WhenListingHasUpcomingBookings()
+    public async Task Delete_ShouldReturnConflictAndKeepActive_WhenListingHasUpcomingBookings()
     {
         var listing = CreateOwnListing();
         _bookings
-            .Setup(repository => repository.HasUpcomingForListingAsync(listing.Id, DateOnly.FromDateTime(Now.UtcDateTime), It.IsAny<CancellationToken>()))
+            .Setup(repository => repository.HasUpcomingForListingAsync(listing.Id, KyivToday, It.IsAny<CancellationToken>()))
             .ReturnsAsync(true);
 
         var result = await _sut.DeleteAsync(_hostId, listing.Id);

@@ -191,7 +191,7 @@ public sealed class MappingConfigTests
             Guid.NewGuid(), Guid.NewGuid(), new DateOnly(2026, 3, 10), new DateOnly(2026, 3, 13), 2, 1000m,
             new DateTimeOffset(2026, 3, 1, 9, 0, 0, TimeSpan.Zero));
         var cancelledAt = new DateTimeOffset(2026, 3, 2, 9, 0, 0, TimeSpan.Zero);
-        booking.Cancel(cancelledAt, DateOnly.FromDateTime(cancelledAt.UtcDateTime), BookingCanceller.Host);
+        booking.Cancel(cancelledAt, new DateOnly(2026, 3, 2), BookingCanceller.Host);
 
         var dto = booking.Adapt<BookingDto>();
 

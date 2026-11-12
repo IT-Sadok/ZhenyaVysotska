@@ -45,7 +45,7 @@ public sealed class BookingTests
     }
 
     [Fact]
-    public void CanBeCancelledOn_ShouldReturnTrue_WhenListingTodayIsTheDayBeforeCheckIn()
+    public void CanBeCancelledOn_ShouldReturnTrue_WhenTodayIsTheDayBeforeCheckIn()
     {
         var booking = CreateBooking();
 
@@ -53,7 +53,7 @@ public sealed class BookingTests
     }
 
     [Fact]
-    public void CanBeCancelledOn_ShouldReturnFalse_WhenListingTodayIsTheCheckInDay()
+    public void CanBeCancelledOn_ShouldReturnFalse_WhenTodayIsTheCheckInDay()
     {
         var booking = CreateBooking();
 
@@ -61,7 +61,7 @@ public sealed class BookingTests
     }
 
     [Fact]
-    public void Cancel_ShouldThrowAndKeepConfirmed_WhenListingTodayIsTheCheckInDay()
+    public void Cancel_ShouldThrowAndKeepConfirmed_WhenTodayIsTheCheckInDay()
     {
         var booking = CreateBooking();
         
@@ -93,13 +93,12 @@ public sealed class BookingTests
         Should.Throw<InvalidOperationException>(() => booking.Cancel(At(CheckIn.AddDays(-4)), CheckIn.AddDays(-4), BookingCanceller.Guest));
     }
 
-    // The existing booking is May 10–13
     [Theory]
-    [InlineData(10, 13)] // same dates
-    [InlineData(8, 11)]  // overlaps the start
-    [InlineData(12, 15)] // overlaps the end
-    [InlineData(11, 12)] // inside the booking
-    [InlineData(5, 20)]  // covers the whole booking
+    [InlineData(10, 13)] 
+    [InlineData(8, 11)]  
+    [InlineData(12, 15)] 
+    [InlineData(11, 12)] 
+    [InlineData(5, 20)]  
     public void Blocks_ShouldReturnTrue_WhenRequestedStayOverlapsConfirmedBooking(int checkInDay, int checkOutDay)
     {
         var booking = CreateBooking();
@@ -108,10 +107,10 @@ public sealed class BookingTests
     }
 
     [Theory]
-    [InlineData(8, 10)]  // checks out on the booking's check-in day
-    [InlineData(13, 15)] // checks in on the booking's check-out day
-    [InlineData(1, 5)]   // completely before
-    [InlineData(20, 25)] // completely after
+    [InlineData(8, 10)] 
+    [InlineData(13, 15)] 
+    [InlineData(1, 5)]   
+    [InlineData(20, 25)] 
     public void Blocks_ShouldReturnFalse_WhenRequestedStayDoesNotOverlap(int checkInDay, int checkOutDay)
     {
         var booking = CreateBooking();
@@ -129,9 +128,9 @@ public sealed class BookingTests
     }
 
     [Theory]
-    [InlineData(1)]  // before check-in
-    [InlineData(10)] // check-in day
-    [InlineData(12)] // stay in progress
+    [InlineData(1)]  
+    [InlineData(10)] 
+    [InlineData(12)] 
     public void IsUpcoming_ShouldReturnTrue_WhenConfirmedBookingHasNotEnded(int todayDay)
     {
         var booking = CreateBooking();
@@ -140,8 +139,8 @@ public sealed class BookingTests
     }
 
     [Theory]
-    [InlineData(13)] // check-out day
-    [InlineData(20)] // after check-out
+    [InlineData(13)] 
+    [InlineData(20)] 
     public void IsUpcoming_ShouldReturnFalse_WhenBookingHasEnded(int todayDay)
     {
         var booking = CreateBooking();
