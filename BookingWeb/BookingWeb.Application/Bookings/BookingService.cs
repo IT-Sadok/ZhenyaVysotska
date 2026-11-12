@@ -66,8 +66,8 @@ public sealed class BookingService : IBookingService
             _timeProvider.GetUtcNow());
 
         _bookings.Add(booking);
-
-        var saveResult = await _unitOfWork.SaveChangesAsync(ct);
+        
+        var saveResult = await _unitOfWork.TrySaveChangesAsync(ct);
         if (saveResult.IsFailure)
         {
             return saveResult.Error;

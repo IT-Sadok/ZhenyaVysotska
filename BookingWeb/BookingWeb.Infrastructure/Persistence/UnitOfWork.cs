@@ -17,7 +17,12 @@ public sealed class UnitOfWork : IUnitOfWork
         _db = db;
     }
     
-    public async Task<Result> SaveChangesAsync(CancellationToken ct = default)
+    public Task SaveChangesAsync(CancellationToken ct = default)
+    {
+        return _db.SaveChangesAsync(ct);
+    }
+
+    public async Task<Result> TrySaveChangesAsync(CancellationToken ct = default)
     {
         try
         {

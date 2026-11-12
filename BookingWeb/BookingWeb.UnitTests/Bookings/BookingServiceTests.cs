@@ -26,7 +26,7 @@ public sealed class BookingServiceTests
     public BookingServiceTests()
     {
         _unitOfWork
-            .Setup(unitOfWork => unitOfWork.SaveChangesAsync(It.IsAny<CancellationToken>()))
+            .Setup(unitOfWork => unitOfWork.TrySaveChangesAsync(It.IsAny<CancellationToken>()))
             .ReturnsAsync(Result.Success());
 
         _sut = CreateSut(Now);
@@ -86,7 +86,7 @@ public sealed class BookingServiceTests
             repository => repository.Add(It.Is<Booking>(booking =>
                 booking.GuestId == _guestId && booking.ListingId == listing.Id)),
             Times.Once);
-        _unitOfWork.Verify(unitOfWork => unitOfWork.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
+        _unitOfWork.Verify(unitOfWork => unitOfWork.TrySaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [Fact]
@@ -138,7 +138,7 @@ public sealed class BookingServiceTests
         var result = await _sut.CreateAsync(_guestId, CreateRequest(listing));
 
         result.Error.ShouldBe(BookingErrors.DatesUnavailable);
-        _unitOfWork.Verify(unitOfWork => unitOfWork.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Never);
+        _unitOfWork.Verify(unitOfWork => unitOfWork.TrySaveChangesAsync(It.IsAny<CancellationToken>()), Times.Never);
     }
 
     [Fact]
@@ -147,7 +147,7 @@ public sealed class BookingServiceTests
         var listing = CreateListing();
         SetupListing(listing);
         _unitOfWork
-            .Setup(unitOfWork => unitOfWork.SaveChangesAsync(It.IsAny<CancellationToken>()))
+            .Setup(unitOfWork => unitOfWork.TrySaveChangesAsync(It.IsAny<CancellationToken>()))
             .ReturnsAsync(Result.Failure(BookingErrors.DatesUnavailable));
 
         var result = await _sut.CreateAsync(_guestId, CreateRequest(listing));
