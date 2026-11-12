@@ -29,6 +29,10 @@ public class ApplicationDbContext
         
         builder.HasPostgresExtension("postgis");
 
+        builder.HasDbFunction(typeof(PostgresFunctions).GetMethod(nameof(PostgresFunctions.DateRange))!)
+            .HasName("daterange")
+            .IsBuiltIn();
+
         builder.ApplyConfigurationsFromAssembly(Assembly.GetExecutingAssembly());
     }
 }

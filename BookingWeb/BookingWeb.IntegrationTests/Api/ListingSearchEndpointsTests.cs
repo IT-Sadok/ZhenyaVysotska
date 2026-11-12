@@ -340,6 +340,20 @@ public sealed class ListingSearchEndpointsTests : ApiTestBase
     }
 
     [Fact]
+    public async Task MapAndList_ShouldIncludeListing_WhenStayEndsOnBookingCheckInDay()
+    {
+        using var host = await CreateUserClientAsync("host@test.com", Roles.Host);
+        var listing = await CreateListingAsync(host);
+        using var guest = await CreateUserClientAsync("guest@test.com", Roles.Client);
+        (await BookAsync(guest, listing.Id, Today.AddDays(10), Today.AddDays(13))).EnsureSuccessStatusCode();
+
+        var query = $"{KyivBox}&{Stay(Today.AddDays(8), Today.AddDays(10))}";
+
+        (await GetMapAsync(query)).Markers.Select(m => m.Id).ShouldBe([listing.Id]);
+        (await GetListAsync(query)).Items.Select(l => l.Id).ShouldBe([listing.Id]);
+    }
+
+    [Fact]
     public async Task MapAndList_ShouldIncludeListing_WhenOverlappingBookingIsCancelled()
     {
         using var host = await CreateUserClientAsync("host@test.com", Roles.Host);

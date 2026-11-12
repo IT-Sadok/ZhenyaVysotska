@@ -5,7 +5,7 @@ namespace BookingWeb.Application.Common.Interfaces;
 
 public interface IBookingRepository
 {
-    void Add (Booking booking);
+    void Add(Booking booking);
     
     Task<Booking?> GetByIdForGuestAsync(Guid bookingId, Guid guestId, CancellationToken ct = default);
     
@@ -18,8 +18,4 @@ public interface IBookingRepository
     Task<bool> HasOverlapAsync(Guid listingId, DateOnly checkIn, DateOnly checkOut, CancellationToken ct = default);
     
     Task<bool> HasUpcomingForListingAsync(Guid listingId, DateOnly today, CancellationToken ct = default);
-    
-    Task<bool> HasUpcomingForGuestAsync(Guid guestId, DateOnly today, CancellationToken ct = default);
-    
-    Task<bool> HasUpcomingForHostAsync(Guid hostId, DateOnly today, CancellationToken ct = default);
 }

@@ -8,6 +8,7 @@ namespace BookingWeb.Infrastructure.Persistence.Repositories;
 public sealed class BookingRepository : IBookingRepository
 {
     private readonly ApplicationDbContext _db;
+    
     public BookingRepository(ApplicationDbContext db)
     {
         _db = db;
@@ -24,7 +25,7 @@ public sealed class BookingRepository : IBookingRepository
             .AsNoTracking()
             .Where(b=> b.ListingId == listingId)
             .OrderByDescending(b => b.CheckIn)
-            .ThenBy(b=>b.Id)
+            .ThenBy(b=> b.Id)
             .ToPagedResultAsync(request.Page, request.PageSize, ct);
     }
     
@@ -39,7 +40,7 @@ public sealed class BookingRepository : IBookingRepository
             .AsNoTracking()
             .Where(b=> b.GuestId == guestId)
             .OrderByDescending(b => b.CheckIn)
-            .ThenBy(b=>b.Id)
+            .ThenBy(b=> b.Id)
             .ToPagedResultAsync(request.Page, request.PageSize, ct);
     }
     
@@ -63,22 +64,6 @@ public sealed class BookingRepository : IBookingRepository
     {
         return _db.Bookings
             .Where(b => b.ListingId == listingId)
-            .Where(Booking.IsUpcoming(today))
-            .AnyAsync(ct);
-    }
-
-    public Task<bool> HasUpcomingForGuestAsync(Guid guestId, DateOnly today, CancellationToken ct = default)
-    {
-        return _db.Bookings
-            .Where(b => b.GuestId == guestId)
-            .Where(Booking.IsUpcoming(today))
-            .AnyAsync(ct);
-    }
-
-    public Task<bool> HasUpcomingForHostAsync(Guid hostId, DateOnly today, CancellationToken ct = default)
-    {
-        return _db.Bookings
-            .Where(b => _db.Listings.Any(l => l.Id == b.ListingId && l.HostId == hostId))
             .Where(Booking.IsUpcoming(today))
             .AnyAsync(ct);
     }

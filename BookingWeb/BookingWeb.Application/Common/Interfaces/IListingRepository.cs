@@ -6,7 +6,6 @@ namespace BookingWeb.Application.Common.Interfaces;
 
 public interface IListingRepository
 {
-    /// <summary>Untracked entity lookup (any status); used by bookings to check host, capacity and price.</summary>
     Task<Listing?> GetByIdAsync(Guid listingId, CancellationToken ct = default);
 
     Task<PublicListingDto?> GetPublicByIdAsync(Guid listingId, CancellationToken ct = default);
@@ -22,6 +21,4 @@ public interface IListingRepository
         ListingSearchCriteria criteria, int take, CancellationToken ct = default);
 
     void Add(Listing listing);
-
-    Task DeactivateAllForHostAsync(Guid hostId, CancellationToken ct = default);
 }

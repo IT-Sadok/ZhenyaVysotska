@@ -82,13 +82,6 @@ public sealed class ListingRepository : IListingRepository
 
     public void Add(Listing listing) => _db.Listings.Add(listing);
 
-    public Task DeactivateAllForHostAsync(Guid hostId, CancellationToken ct = default)
-    {
-        return _db.Listings
-            .Where(listing => listing.HostId == hostId && listing.IsActive)
-            .ExecuteUpdateAsync(setters => setters.SetProperty(listing => listing.IsActive, false), ct);
-    }
-    
     private IQueryable<Listing> ApplyCriteria(ListingSearchCriteria criteria)
     {
         var query = _db.Listings
@@ -119,11 +112,11 @@ public sealed class ListingRepository : IListingRepository
 
         if (criteria.Stay is { } stay)
         {
-            var bookedListingIds = _db.Bookings
-                .Where(Booking.Blocks(stay.CheckIn, stay.CheckOut))
-                .Select(b => b.ListingId);
-
-            query = query.Where(l => !bookedListingIds.Contains(l.Id));
+            query = query.Where(l => !_db.Bookings.Any(b =>
+                b.ListingId == l.Id
+                && b.Status == BookingStatus.Confirmed
+                && PostgresFunctions.DateRange(b.CheckIn, b.CheckOut, PostgresFunctions.HalfOpen)
+                    .Overlaps(PostgresFunctions.DateRange(stay.CheckIn, stay.CheckOut, PostgresFunctions.HalfOpen))));
         }
 
         return query;
