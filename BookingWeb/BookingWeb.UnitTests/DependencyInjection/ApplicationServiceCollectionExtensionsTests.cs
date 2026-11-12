@@ -1,7 +1,7 @@
 using BookingWeb.Application;
 using BookingWeb.Application.Admin;
 using BookingWeb.Application.Auth;
-using BookingWeb.Application.Interfaces;
+using BookingWeb.Application.Common.Interfaces;
 using BookingWeb.Application.Listings;
 using BookingWeb.Application.Profiles;
 using Microsoft.Extensions.DependencyInjection;

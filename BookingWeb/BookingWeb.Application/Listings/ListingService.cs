@@ -1,4 +1,5 @@
-using BookingWeb.Application.Interfaces;
+using BookingWeb.Application.Common;
+using BookingWeb.Application.Common.Interfaces;
 using BookingWeb.Application.Listings.Requests;
 using BookingWeb.Application.Models;
 using BookingWeb.Application.Results;
@@ -11,17 +12,20 @@ namespace BookingWeb.Application.Listings;
 public sealed class ListingService : IListingService
 {
     private readonly IListingRepository _listingRepository;
+    private readonly IBookingRepository _bookingRepository;
     private readonly IUnitOfWork _unitOfWork;
     private readonly TimeProvider _timeProvider;
     private readonly ILocationObfuscator _locationObfuscator;
 
     public ListingService(
         IListingRepository listingRepository, 
+        IBookingRepository bookingRepository,
         IUnitOfWork unitOfWork,
         TimeProvider timeProvider,
         ILocationObfuscator locationObfuscator)
     {
         _listingRepository = listingRepository;
+        _bookingRepository = bookingRepository;
         _unitOfWork = unitOfWork;
         _timeProvider = timeProvider;
         _locationObfuscator = locationObfuscator;
@@ -64,12 +68,10 @@ public sealed class ListingService : IListingService
         return listing;
     }
 
-    public async Task<Result<IReadOnlyList<HostListingDto>>> GetMineAsync(
-        Guid hostId, CancellationToken ct = default)
+    public async Task<Result<PagedResult<HostListingDto>>> GetMineAsync(
+        Guid hostId, PageRequest request, CancellationToken ct = default)
     {
-        var listings = await _listingRepository.GetByHostAsync(hostId, ct);
-
-        return Result.Success(listings);
+        return await _listingRepository.GetByHostAsync(hostId, request, ct);
     }
 
     public async Task<Result<PagedResult<PublicListingDto>>> SearchAsync(
@@ -131,6 +133,12 @@ public sealed class ListingService : IListingService
         if (listing is null)
         {
             return ListingErrors.NotFound;
+        }
+
+        var today = _timeProvider.GetPlatformToday();
+        if (await _bookingRepository.HasUpcomingForListingAsync(listing.Id, today, ct))
+        {
+            return ListingErrors.HasUpcomingBookings;
         }
         
         listing.Deactivate();

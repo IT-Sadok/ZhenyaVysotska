@@ -95,9 +95,10 @@ public sealed class ListingEndpointsTests : ApiTestBase
         var own = await CreateListingAsync(host);
         await CreateListingAsync(otherHost);
 
-        var listings = await host.GetFromJsonAsync<List<HostListingDto>>("/api/listings/mine");
+        var page = await host.GetFromJsonAsync<PagedResult<HostListingDto>>("/api/listings/mine");
 
-        listings!.Select(listing => listing.Id).ShouldBe(new[] { own.Id });
+        page!.Items.Select(listing => listing.Id).ShouldBe(new[] { own.Id });
+        page.TotalCount.ShouldBe(1);
     }
 
     [Fact]

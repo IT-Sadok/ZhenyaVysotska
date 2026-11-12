@@ -1,5 +1,5 @@
 using System.Threading.RateLimiting;
-using BookingWeb.Application.Interfaces;
+using BookingWeb.Application.Common.Interfaces;
 using BookingWeb.Infrastructure.Geocoding;
 using BookingWeb.Infrastructure.Persistence;
 using Microsoft.AspNetCore.Hosting;
@@ -93,6 +93,7 @@ public sealed class ApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
         await db.Database.ExecuteSqlRawAsync(
             """
             TRUNCATE TABLE
+                "Bookings",
                 "Listings",
                 "RefreshTokens",
                 "UserProfiles",

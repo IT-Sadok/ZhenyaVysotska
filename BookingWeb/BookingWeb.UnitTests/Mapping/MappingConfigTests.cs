@@ -1,3 +1,4 @@
+using BookingWeb.Application.Bookings;
 using BookingWeb.Application.Common.Mapping;
 using BookingWeb.Application.Listings;
 using BookingWeb.Application.Profiles;
@@ -158,5 +159,44 @@ public sealed class MappingConfigTests
 
         dto.Bio.ShouldBeNull();
         dto.AvatarUrl.ShouldBeNull();
+    }
+
+    [Fact]
+    public void Adapt_ShouldMapAllFields_WhenMappingConfirmedBookingToDto()
+    {
+        var createdAt = new DateTimeOffset(2026, 3, 1, 9, 0, 0, TimeSpan.Zero);
+        var listingId = Guid.NewGuid();
+        var booking = Booking.Create(
+            listingId, Guid.NewGuid(), new DateOnly(2026, 3, 10), new DateOnly(2026, 3, 13), 2, 1000m, createdAt);
+
+        var dto = booking.Adapt<BookingDto>();
+
+        dto.Id.ShouldBe(booking.Id);
+        dto.ListingId.ShouldBe(listingId);
+        dto.CheckIn.ShouldBe(new DateOnly(2026, 3, 10));
+        dto.CheckOut.ShouldBe(new DateOnly(2026, 3, 13));
+        dto.Nights.ShouldBe(3);
+        dto.Guests.ShouldBe(2);
+        dto.TotalPrice.ShouldBe(3000m);
+        dto.Status.ShouldBe("Confirmed");
+        dto.CreatedAtUtc.ShouldBe(createdAt);
+        dto.CancelledAtUtc.ShouldBeNull();
+        dto.CancelledBy.ShouldBeNull();
+    }
+
+    [Fact]
+    public void Adapt_ShouldMapCancellationAsStrings_WhenBookingIsCancelledByHost()
+    {
+        var booking = Booking.Create(
+            Guid.NewGuid(), Guid.NewGuid(), new DateOnly(2026, 3, 10), new DateOnly(2026, 3, 13), 2, 1000m,
+            new DateTimeOffset(2026, 3, 1, 9, 0, 0, TimeSpan.Zero));
+        var cancelledAt = new DateTimeOffset(2026, 3, 2, 9, 0, 0, TimeSpan.Zero);
+        booking.Cancel(cancelledAt, new DateOnly(2026, 3, 2), BookingCanceller.Host);
+
+        var dto = booking.Adapt<BookingDto>();
+
+        dto.Status.ShouldBe("Cancelled");
+        dto.CancelledAtUtc.ShouldBe(cancelledAt);
+        dto.CancelledBy.ShouldBe("Host");
     }
 }

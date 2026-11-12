@@ -5,7 +5,7 @@ using System.Net.Http.Json;
 using System.Text;
 using System.Text.Json;
 using BookingWeb.Application.Geocoding;
-using BookingWeb.Application.Interfaces;
+using BookingWeb.Application.Common.Interfaces;
 using BookingWeb.Application.Results;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.DependencyInjection;

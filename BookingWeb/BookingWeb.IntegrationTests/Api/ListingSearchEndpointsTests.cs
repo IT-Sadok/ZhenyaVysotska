@@ -1,6 +1,7 @@
 using System.Globalization;
 using System.Net;
 using System.Net.Http.Json;
+using BookingWeb.Application.Bookings;
 using BookingWeb.Application.Listings;
 using BookingWeb.Application.Listings.Requests;
 using BookingWeb.Application.Models;
@@ -54,8 +55,8 @@ public sealed class ListingSearchEndpointsTests : ApiTestBase
 
     private async Task<HostListingDto> GetMineAsync(HttpClient host, Guid listingId)
     {
-        var mine = await host.GetFromJsonAsync<List<HostListingDto>>("/api/listings/mine");
-        return mine!.Single(listing => listing.Id == listingId);
+        var mine = await host.GetFromJsonAsync<PagedResult<HostListingDto>>("/api/listings/mine");
+        return mine!.Items.Single(listing => listing.Id == listingId);
     }
 
 
@@ -302,5 +303,78 @@ public sealed class ListingSearchEndpointsTests : ApiTestBase
 
         mapIds.Count.ShouldBe(4);
         mapIds.ShouldBe(listIds);
+    }
+
+    private static string Stay(DateOnly checkIn, DateOnly checkOut) =>
+        $"checkIn={checkIn:yyyy-MM-dd}&checkOut={checkOut:yyyy-MM-dd}";
+
+    [Fact]
+    public async Task MapAndList_ShouldExcludeListing_WhenRequestedStayOverlapsConfirmedBooking()
+    {
+        using var host = await CreateUserClientAsync("host@test.com", Roles.Host);
+        var booked = await CreateListingAsync(host);
+        var free = await CreateListingAsync(host);
+        using var guest = await CreateUserClientAsync("guest@test.com", Roles.Client);
+        (await BookAsync(guest, booked.Id, Today.AddDays(10), Today.AddDays(13))).EnsureSuccessStatusCode();
+
+        var query = $"{KyivBox}&{Stay(Today.AddDays(12), Today.AddDays(15))}";
+        var mapIds = (await GetMapAsync(query)).Markers.Select(m => m.Id).ToList();
+        var listIds = (await GetListAsync(query)).Items.Select(l => l.Id).ToList();
+
+        mapIds.ShouldBe([free.Id]);
+        listIds.ShouldBe([free.Id]);
+    }
+
+    [Fact]
+    public async Task MapAndList_ShouldIncludeListing_WhenStayStartsOnBookingCheckOutDay()
+    {
+        using var host = await CreateUserClientAsync("host@test.com", Roles.Host);
+        var listing = await CreateListingAsync(host);
+        using var guest = await CreateUserClientAsync("guest@test.com", Roles.Client);
+        (await BookAsync(guest, listing.Id, Today.AddDays(10), Today.AddDays(13))).EnsureSuccessStatusCode();
+
+        var query = $"{KyivBox}&{Stay(Today.AddDays(13), Today.AddDays(15))}";
+
+        (await GetMapAsync(query)).Markers.Select(m => m.Id).ShouldBe([listing.Id]);
+        (await GetListAsync(query)).Items.Select(l => l.Id).ShouldBe([listing.Id]);
+    }
+
+    [Fact]
+    public async Task MapAndList_ShouldIncludeListing_WhenStayEndsOnBookingCheckInDay()
+    {
+        using var host = await CreateUserClientAsync("host@test.com", Roles.Host);
+        var listing = await CreateListingAsync(host);
+        using var guest = await CreateUserClientAsync("guest@test.com", Roles.Client);
+        (await BookAsync(guest, listing.Id, Today.AddDays(10), Today.AddDays(13))).EnsureSuccessStatusCode();
+
+        var query = $"{KyivBox}&{Stay(Today.AddDays(8), Today.AddDays(10))}";
+
+        (await GetMapAsync(query)).Markers.Select(m => m.Id).ShouldBe([listing.Id]);
+        (await GetListAsync(query)).Items.Select(l => l.Id).ShouldBe([listing.Id]);
+    }
+
+    [Fact]
+    public async Task MapAndList_ShouldIncludeListing_WhenOverlappingBookingIsCancelled()
+    {
+        using var host = await CreateUserClientAsync("host@test.com", Roles.Host);
+        var listing = await CreateListingAsync(host);
+        using var guest = await CreateUserClientAsync("guest@test.com", Roles.Client);
+        var bookResponse = await BookAsync(guest, listing.Id, Today.AddDays(10), Today.AddDays(13));
+        var booking = (await bookResponse.Content.ReadFromJsonAsync<BookingDto>())!;
+        (await guest.PostAsync($"/api/bookings/{booking.Id}/cancel", null)).EnsureSuccessStatusCode();
+
+        var query = $"{KyivBox}&{Stay(Today.AddDays(10), Today.AddDays(13))}";
+
+        (await GetMapAsync(query)).Markers.Select(m => m.Id).ShouldBe([listing.Id]);
+        (await GetListAsync(query)).Items.Select(l => l.Id).ShouldBe([listing.Id]);
+    }
+
+    [Fact]
+    public async Task Map_ShouldReturnValidationProblem_WhenCheckInIsInThePast()
+    {
+        var response = await Client.GetAsync(
+            $"/api/listings/map?{KyivBox}&{Stay(Today.AddDays(-1), Today.AddDays(2))}");
+
+        await response.ShouldHaveStatusAsync(HttpStatusCode.BadRequest);
     }
 }

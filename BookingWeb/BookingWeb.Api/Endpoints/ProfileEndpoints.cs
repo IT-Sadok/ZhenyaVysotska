@@ -1,4 +1,5 @@
 using BookingWeb.Api.Extensions;
+using BookingWeb.Application.Common.Interfaces;
 using BookingWeb.Application.Profiles;
 using BookingWeb.Application.Profiles.Requests;
 
@@ -13,23 +14,17 @@ public sealed class ProfileEndpoints : IEndpointGroup
             .RequireAuthorization();
 
         group.MapGet("/", async (
-            HttpContext http, IProfileService profiles, CancellationToken ct) =>
+            IUserContext user, IProfileService profiles, CancellationToken ct) =>
         {
-            var userId = http.User.GetUserId();
-            if (userId is null) return Results.Unauthorized();
-
-            var result = await profiles.GetAsync(userId.Value, ct);
+            var result = await profiles.GetAsync(user.UserId, ct);
             return result.Match(Results.Ok);
         });
 
         group.MapPut("/", async (
-            UpdateProfileRequest request, HttpContext http, 
+            UpdateProfileRequest request, IUserContext user, 
             IProfileService profiles, CancellationToken ct) =>
         {
-            var userId = http.User.GetUserId();
-            if (userId is null) return Results.Unauthorized();
-
-            var result = await profiles.UpdateAsync(userId.Value, request, ct);
+            var result = await profiles.UpdateAsync(user.UserId, request, ct);
             return result.Match(Results.Ok);
         });
 

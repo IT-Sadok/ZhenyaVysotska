@@ -1,4 +1,4 @@
-using BookingWeb.Application.Interfaces;
+using BookingWeb.Application.Common.Interfaces;
 using BookingWeb.Application.Listings;
 using BookingWeb.Application.Listings.Requests;
 using BookingWeb.Application.Models;
@@ -13,22 +13,25 @@ namespace BookingWeb.UnitTests.Listings;
 public sealed class ListingServiceTests
 {
     private static readonly DateTimeOffset Now = new (2026, 3, 1, 9, 0, 0, TimeSpan.Zero);
+    private static readonly DateOnly KyivToday = new(2026, 3, 1); 
     private static readonly GeoPoint KyivExact = new(50.4501, 30.5234);
     private static readonly GeoPoint KyivPublic = new(50.4530, 30.5260);
     private static readonly GeoPoint OdesaExact = new(46.4825, 30.7233);
 
     private readonly Guid _hostId = Guid.NewGuid();
     private readonly Mock<IListingRepository> _listings = new();
+    private readonly Mock<IBookingRepository> _bookings = new();
     private readonly Mock<IUnitOfWork> _unitOfWork = new();
     private readonly FakeLocationObfuscator _obfuscator = new();
     private readonly ListingService _sut;
 
     public ListingServiceTests()
     {
-        _sut = new ListingService(_listings.Object, _unitOfWork.Object, new FixedTimeProvider(Now), _obfuscator);
+        _sut = new ListingService(_listings.Object, _bookings.Object, _unitOfWork.Object, new FixedTimeProvider(Now), _obfuscator);
     }
 
-    private Listing NewListing(string title = "Loft", string? description = null, decimal price = 1000m, int guests = 2)
+    private Listing NewListing(
+        string title = "Loft", string? description = null, decimal price = 1000m, int guests = 2)
     {
         return Listing.Create(
             _hostId, title, description, "Kyiv", "Kyiv", "Khreshchatyk 1",
@@ -63,8 +66,7 @@ public sealed class ListingServiceTests
 
     private static MapSearchRequest MapRequest(int limit = 200) =>
         new(50.3, 30.3, 50.6, 30.8, MinPrice: 500m, MaxPrice: 3000m, Guests: 2, Limit: limit);
-
-    // ---------- Create / Update ----------
+    
 
     [Fact]
     public async Task Create_ShouldAddListingOwnedByHost_WhenRequestIsValid()
@@ -157,7 +159,37 @@ public sealed class ListingServiceTests
     }
 
     [Fact]
-    public async Task Delete_ShouldDeactivateListing_WhenHostOwnsListing()
+    public async Task Delete_ShouldReturnConflictAndKeepActive_WhenListingHasUpcomingBookings()
+    {
+        var listing = CreateOwnListing();
+        _bookings
+            .Setup(repository => repository.HasUpcomingForListingAsync(listing.Id, KyivToday, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(true);
+
+        var result = await _sut.DeleteAsync(_hostId, listing.Id);
+
+        result.Error.ShouldBe(ListingErrors.HasUpcomingBookings);
+        listing.IsActive.ShouldBeTrue();
+    }
+
+    [Fact]
+    public async Task Delete_ShouldCheckUpcomingBookingsAgainstKyivDate_WhenUtcDateIsStillYesterday()
+    {
+        var lateEveningUtc = new DateTimeOffset(2026, 2, 28, 22, 30, 0, TimeSpan.Zero);
+        var sut = new ListingService(
+            _listings.Object, _bookings.Object, _unitOfWork.Object, new FixedTimeProvider(lateEveningUtc), _obfuscator);
+        var listing = CreateOwnListing();
+        var kyivToday = new DateOnly(2026, 3, 1);
+
+        await sut.DeleteAsync(_hostId, listing.Id);
+
+        _bookings.Verify(
+            repository => repository.HasUpcomingForListingAsync(listing.Id, kyivToday, It.IsAny<CancellationToken>()),
+            Times.Once);
+    }
+    
+    [Fact]
+    public async Task Delete_ShouldDeactivateListing_WhenThereAreNoUpcomingBookings()
     {
         var listing = CreateOwnListing();
 
@@ -196,17 +228,20 @@ public sealed class ListingServiceTests
     }
 
     [Fact]
-    public async Task GetMine_ShouldReturnEmptyList_WhenHostHasNoListings()
+    public async Task GetMine_ShouldReturnEmptyPage_WhenHostHasNoListings()
     {
+        var request = new PageRequest(Page: 2, PageSize: 5);
         _listings
-            .Setup(repository => repository.GetByHostAsync(_hostId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync([]);
+            .Setup(repository => repository.GetByHostAsync(_hostId, request, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new PagedResult<HostListingDto>([], 0, 2, 5));
 
-        var result = await _sut.GetMineAsync(_hostId);
+        var result = await _sut.GetMineAsync(_hostId, request);
 
         result.IsSuccess.ShouldBeTrue();
-        result.Value.ShouldNotBeNull();
-        result.Value.ShouldBeEmpty();
+        result.Value.Items.ShouldBeEmpty();
+        result.Value.TotalCount.ShouldBe(0);
+        result.Value.Page.ShouldBe(2);
+        result.Value.PageSize.ShouldBe(5);
     }
 
     [Fact]

@@ -1,3 +1,4 @@
+using BookingWeb.Application.Bookings;
 using BookingWeb.Application.Listings;
 using BookingWeb.Application.Profiles;
 using BookingWeb.Domain.Entities;
@@ -45,5 +46,8 @@ public static class MappingConfig
             .Map(dest => dest.PublicLongitude, src => src.PublicLocation.Longitude);
 
         config.NewConfig<UserProfile, ProfileDto>();
+
+        // Status/CancelledBy are enums on the entity and strings in the DTO; Mapster maps them by name.
+        config.NewConfig<Booking, BookingDto>();
     }
 }

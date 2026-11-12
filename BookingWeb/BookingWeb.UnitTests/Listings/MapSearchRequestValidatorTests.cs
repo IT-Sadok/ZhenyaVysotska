@@ -1,6 +1,7 @@
 using BookingWeb.Application.Listings;
 using BookingWeb.Application.Listings.Requests;
 using BookingWeb.Application.Listings.Validators;
+using BookingWeb.UnitTests.TestDoubles;
 using FluentValidation.TestHelper;
 using Shouldly;
 
@@ -10,7 +11,10 @@ public sealed class MapSearchRequestValidatorTests
 {
     private static readonly string InvalidBox = ListingErrors.InvalidBoundingBox.Code;
 
-    private readonly MapSearchRequestValidator _validator = new();
+    private static readonly DateOnly Today = new(2026, 3, 1);
+
+    private readonly MapSearchRequestValidator _validator =
+        new(new FixedTimeProvider(new DateTimeOffset(2026, 3, 1, 9, 0, 0, TimeSpan.Zero)));
 
     private static MapSearchRequest Valid() => new(50.3, 30.3, 50.6, 30.8);
 
@@ -92,5 +96,29 @@ public sealed class MapSearchRequestValidatorTests
     {
         _validator.TestValidate(Valid() with { MinPrice = 2000m, MaxPrice = 1000m })
             .ShouldHaveValidationErrorFor(x => x.MaxPrice);
+    }
+
+    [Fact]
+    public void Validate_ShouldPass_WhenStayIsInTheFuture()
+    {
+        _validator.TestValidate(Valid() with { CheckIn = Today.AddDays(1), CheckOut = Today.AddDays(4) })
+            .ShouldNotHaveAnyValidationErrors();
+    }
+
+    [Fact]
+    public void Validate_ShouldFail_WhenCheckInIsYesterdayInKyiv()
+    {
+        _validator.TestValidate(Valid() with { CheckIn = Today.AddDays(-1), CheckOut = Today.AddDays(2) })
+            .ShouldHaveValidationErrorFor(x => x.CheckIn);
+    }
+
+    [Fact]
+    public void Validate_ShouldFail_WhenCheckInIsTodayInUtcButYesterdayInKyiv()
+    {
+        // 22:30 UTC on Feb 28 is already 00:30 on Mar 1 in Kyiv (UTC+2 in winter).
+        var validator = new MapSearchRequestValidator(new FixedTimeProvider(new DateTimeOffset(2026, 2, 28, 22, 30, 0, TimeSpan.Zero)));
+
+        validator.TestValidate(Valid() with { CheckIn = new DateOnly(2026, 2, 28), CheckOut = Today.AddDays(2) })
+            .ShouldHaveValidationErrorFor(x => x.CheckIn);
     }
 }

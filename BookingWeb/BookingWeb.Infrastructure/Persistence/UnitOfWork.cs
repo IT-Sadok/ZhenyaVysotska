@@ -1,5 +1,10 @@
-using BookingWeb.Application.Interfaces;
+using BookingWeb.Application.Bookings;
+using BookingWeb.Application.Common.Interfaces;
+using BookingWeb.Application.Results;
+using BookingWeb.Infrastructure.Persistence.Configurations;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Storage;
+using Npgsql;
 
 namespace BookingWeb.Infrastructure.Persistence;
 
@@ -12,9 +17,26 @@ public sealed class UnitOfWork : IUnitOfWork
         _db = db;
     }
     
-    public async Task SaveChangesAsync(CancellationToken ct = default)
+    public Task SaveChangesAsync(CancellationToken ct = default)
     {
-        await _db.SaveChangesAsync(ct);
+        return _db.SaveChangesAsync(ct);
+    }
+
+    public async Task<Result> TrySaveChangesAsync(CancellationToken ct = default)
+    {
+        try
+        {
+            await _db.SaveChangesAsync(ct);
+            return Result.Success();
+        }
+        catch (DbUpdateException exception) when (exception.InnerException is PostgresException
+                                                  {
+                                                      SqlState: PostgresErrorCodes.ExclusionViolation,
+                                                      ConstraintName: BookingConfiguration.NoOverlapConstraintName
+                                                  })
+        {
+            return BookingErrors.DatesUnavailable;
+        }
     }
 
     public async Task<IUnitOfWorkTransaction> BeginTransactionAsync(CancellationToken ct = default)

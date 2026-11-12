@@ -5,9 +5,9 @@ namespace BookingWeb.Application.Listings.Validators;
 
 public sealed class ListingFilterDtoValidator : AbstractValidator<ListingFilterDto>
 {
-    public ListingFilterDtoValidator()
+    public ListingFilterDtoValidator(TimeProvider timeProvider)
     {
-        Include(new ListingSearchQueryRules());
+        Include(new ListingSearchQueryRules(timeProvider));
 
         RuleFor(x => x)
             .Must(HasAllOrNoBoundingBoxValues)

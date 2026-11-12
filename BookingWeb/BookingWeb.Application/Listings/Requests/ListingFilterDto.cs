@@ -8,5 +8,7 @@ public sealed record ListingFilterDto(
     double? MinLng = null,
     double? MaxLat = null,
     double? MaxLng = null,
+    DateOnly? CheckIn = null,
+    DateOnly? CheckOut = null,
     int Page = 1,
     int PageSize = 20) : IListingSearchQuery;

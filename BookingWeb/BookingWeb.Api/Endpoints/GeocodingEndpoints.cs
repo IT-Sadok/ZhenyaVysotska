@@ -1,8 +1,8 @@
 using BookingWeb.Api.Extensions;
 using BookingWeb.Api.RateLimiting;
-using BookingWeb.Application.Constants;
+using BookingWeb.Application.Common.Constants;
 using BookingWeb.Application.Geocoding.Requests;
-using BookingWeb.Application.Interfaces;
+using BookingWeb.Application.Common.Interfaces;
 
 namespace BookingWeb.Api.Endpoints;
 

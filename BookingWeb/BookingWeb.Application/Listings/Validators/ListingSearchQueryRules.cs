@@ -1,3 +1,4 @@
+using BookingWeb.Application.Common;
 using BookingWeb.Application.Listings.Requests;
 using BookingWeb.Domain.ValueObjects;
 using FluentValidation;
@@ -10,7 +11,7 @@ internal sealed class ListingSearchQueryRules : AbstractValidator<IListingSearch
 
     public const string BoundingBoxProperty = "BoundingBox";
 
-    public ListingSearchQueryRules()
+    public ListingSearchQueryRules(TimeProvider timeProvider)
     {
         RuleFor(x => x.Guests).GreaterThanOrEqualTo(1);
         RuleFor(x => x.MinPrice).GreaterThanOrEqualTo(0);
@@ -37,5 +38,25 @@ internal sealed class ListingSearchQueryRules : AbstractValidator<IListingSearch
             .WithMessage($"Bounding box must not exceed {MaxSpanDegrees} degrees in latitude or longitude.")
             .When(x => BoundingBox.From(x) is not null)
             .OverridePropertyName(BoundingBoxProperty);
+
+        RuleFor(x => x.CheckIn)
+            .NotNull()
+            .When(x => x.CheckOut is not null)
+            .WithMessage("CheckIn is required when CheckOut is given.");
+
+        RuleFor(x => x.CheckOut)
+            .NotNull()
+            .When(x => x.CheckIn is not null)
+            .WithMessage("CheckOut is required when CheckIn is given.");
+
+        RuleFor(x => x.CheckIn)
+            .Must(checkIn => checkIn >= timeProvider.GetPlatformToday())
+            .When(x => x.CheckIn is not null)
+            .WithMessage("CheckIn can't be in the past.");
+
+        RuleFor(x => x.CheckOut)
+            .Must((query, checkOut) => checkOut > query.CheckIn)
+            .When(x => x.CheckIn is not null && x.CheckOut is not null)
+            .WithMessage("CheckOut must be after CheckIn.");
     }
 }
